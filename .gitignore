@@ -1,0 +1,23 @@
+node_modules/
+config.json
+logs/*.log
+.nyc_output/
+coverage/
+*.log
+*.dll
+**/config.json
+**/config.yml
+.vscode/
+.idea
+
+# Yarn 2
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+.yarn/sdks/
+
+
+dist/
