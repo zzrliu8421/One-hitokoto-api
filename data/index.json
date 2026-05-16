@@ -1,0 +1,53 @@
+{
+  "updatedAt": "2026-05-16T09:22:09.705Z",
+  "categories": {
+    "a": {
+      "file": "a.json",
+      "count": 1446
+    },
+    "b": {
+      "file": "b.json",
+      "count": 109
+    },
+    "c": {
+      "file": "c.json",
+      "count": 996
+    },
+    "d": {
+      "file": "d.json",
+      "count": 1844
+    },
+    "e": {
+      "file": "e.json",
+      "count": 1419
+    },
+    "f": {
+      "file": "f.json",
+      "count": 957
+    },
+    "g": {
+      "file": "g.json",
+      "count": 746
+    },
+    "h": {
+      "file": "h.json",
+      "count": 187
+    },
+    "i": {
+      "file": "i.json",
+      "count": 737
+    },
+    "j": {
+      "file": "j.json",
+      "count": 124
+    },
+    "k": {
+      "file": "k.json",
+      "count": 301
+    },
+    "l": {
+      "file": "l.json",
+      "count": 76
+    }
+  }
+}

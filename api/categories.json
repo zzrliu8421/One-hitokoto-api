@@ -1,0 +1,18 @@
+{
+  "code": 200,
+  "data": [
+    { "key": "a", "name": "动画", "desc": "Anime" },
+    { "key": "b", "name": "漫画", "desc": "Comic" },
+    { "key": "c", "name": "游戏", "desc": "Game" },
+    { "key": "d", "name": "文学", "desc": "Literature" },
+    { "key": "e", "name": "原创", "desc": "Original" },
+    { "key": "f", "name": "网络", "desc": "Internet" },
+    { "key": "g", "name": "其他", "desc": "Other" },
+    { "key": "h", "name": "影视", "desc": "Movie" },
+    { "key": "i", "name": "诗词", "desc": "Poetry" },
+    { "key": "j", "name": "网易云", "desc": "Netease" },
+    { "key": "k", "name": "哲学", "desc": "Philosophy" },
+    { "key": "l", "name": "抖机灵", "desc": "Wit" }
+  ],
+  "count": 12
+}

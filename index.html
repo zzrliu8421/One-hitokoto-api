@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>一言API - Hitokoto API Service</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%); min-height: 100vh; color: #e2e8f0; }
+    .container { max-width: 960px; margin: 0 auto; padding: 40px 20px; }
+    .header { text-align: center; color: #f8fafc; margin-bottom: 40px; }
+    .header h1 { font-size: 3em; margin-bottom: 10px; text-shadow: 0 4px 20px rgba(99, 102, 241, 0.35); font-weight: 700; letter-spacing: -0.02em; }
+    .header p { font-size: 1.2em; opacity: 0.75; color: #cbd5e1; }
+    .card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(148, 163, 184, 0.1); border-radius: 20px; padding: 32px; margin-bottom: 24px; box-shadow: 0 8px 32px rgba(2, 8, 20, 0.4); transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(2, 8, 20, 0.5); }
+    .card h2 { color: #818cf8; margin-bottom: 16px; font-size: 1.5em; font-weight: 600; }
+    .card h3 { color: #f1f5f9; margin: 20px 0 12px; font-size: 1.15em; font-weight: 600; }
+    .card p { color: #94a3b8; line-height: 1.8; margin-bottom: 12px; }
+    .demo-box { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(99, 102, 241, 0.15); border-radius: 16px; padding: 28px; margin: 20px 0; text-align: center; }
+    .demo-text { font-size: 1.35em; color: #f8fafc; margin-bottom: 12px; line-height: 1.6; min-height: 2em; font-weight: 500; }
+    .demo-source { color: #94a3b8; font-size: 0.95em; min-height: 1.5em; }
+    .refresh-btn { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); color: #f8fafc; border: none; padding: 12px 32px; border-radius: 25px; font-size: 1em; cursor: pointer; margin-top: 16px; transition: all 0.3s ease; font-weight: 500; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3); }
+    .refresh-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5); }
+    .refresh-btn:active { transform: translateY(0); }
+    .refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .api-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.95em; }
+    .api-table th, .api-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid rgba(148, 163, 184, 0.15); }
+    .api-table th { color: #818cf8; font-weight: 600; background: rgba(15, 23, 42, 0.5); }
+    .api-table td { color: #cbd5e1; }
+    .api-table tr:hover td { background: rgba(99, 102, 241, 0.05); }
+    .api-table code { background: rgba(15, 23, 42, 0.8); color: #c4b5fd; padding: 2px 6px; border-radius: 4px; font-family: "Consolas", monospace; font-size: 0.9em; border: 1px solid rgba(99, 102, 241, 0.2); }
+    .endpoint { background: #0f172a; color: #34d399; padding: 14px 16px; border-radius: 10px; font-family: "Consolas", monospace; margin: 10px 0; overflow-x: auto; font-size: 0.95em; border: 1px solid rgba(52, 211, 153, 0.15); }
+    .endpoint .method { color: #f472b6; font-weight: bold; }
+    .json-example { background: #0f172a; padding: 16px; border-radius: 10px; font-family: "Consolas", monospace; font-size: 0.9em; overflow-x: auto; line-height: 1.6; color: #e2e8f0; border: 1px solid rgba(99, 102, 241, 0.15); }
+    .json-example .key { color: #f472b6; }
+    .json-example .string { color: #34d399; }
+    .json-example .number { color: #60a5fa; }
+    .footer { text-align: center; color: #94a3b8; margin-top: 40px; }
+    .footer a { color: #818cf8; text-decoration: none; transition: color 0.2s; }
+    .footer a:hover { color: #a5b4fc; text-decoration: underline; }
+    .tag { display: inline-block; background: rgba(99, 102, 241, 0.15); color: #a5b4fc; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; margin: 4px; border: 1px solid rgba(99, 102, 241, 0.2); transition: all 0.2s; cursor: default; }
+    .tag:hover { background: rgba(99, 102, 241, 0.25); border-color: rgba(99, 102, 241, 0.4); transform: translateY(-1px); }
+    .status-ok { color: #34d399; font-weight: bold; }
+    .status-error { color: #f87171; font-weight: bold; }
+    .notice { background: rgba(251, 191, 36, 0.08); border-left: 4px solid #fbbf24; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; color: #fde68a; font-size: 0.95em; }
+    .notice a { color: #fcd34d; text-decoration: underline; }
+    .notice a:hover { color: #fbbf24; }
+    @media (max-width: 600px) { .header h1 { font-size: 2em; } .card { padding: 20px; } .demo-text { font-size: 1.1em; } .api-table { font-size: 0.85em; } .api-table th, .api-table td { padding: 8px; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>一言 API</h1>
+      <p>基于 EdgeOne Pages 部署的高性能句子服务</p>
+    </div>
+    <div class="card">
+      <h2>随机一言</h2>
+      <div class="demo-box">
+        <div class="demo-text" id="hitokoto-text">正在加载...</div>
+        <div class="demo-source" id="hitokoto-source"></div>
+        <div style="margin-top: 8px; font-size: 0.85em; color: #999;" id="hitokoto-status"></div>
+        <br>
+        <button class="refresh-btn" id="refresh-btn" onclick="fetchHitokoto()">换一句</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>接口说明</h2>
+      <p>动漫也好、小说也好、网络也好，不论在哪里，我们总会看到有那么一两个句子能穿透你的心。一言指的就是一句话，可以是动漫中的台词，也可以是网络上的各种小段子。</p>
+      <div class="notice">
+        <strong>提示：</strong>本服务基于 EdgeOne Pages 部署，数据来源于 <a href="https://github.com/hitokoto-osc/sentences-bundle" target="_blank">hitokoto-osc/sentences-bundle</a>。
+      </div>
+      <h3>请求地址</h3>
+      <div class="endpoint"><span class="method">GET</span> https://hitokoto.api.sylv.top/api</div>
+      <h3>请求参数</h3>
+      <table class="api-table">
+        <tr><th>参数</th><th>值</th><th>可选</th><th>说明</th></tr>
+        <tr><td><code>c</code></td><td>见下表</td><td>是</td><td>句子类型</td></tr>
+        <tr><td><code>encode</code></td><td>json / text / js</td><td>是</td><td>返回编码，默认 json</td></tr>
+        <tr><td><code>charset</code></td><td>utf-8</td><td>是</td><td>字符集，默认 utf-8</td></tr>
+        <tr><td><code>callback</code></td><td>如：moe</td><td>是</td><td>JSONP 异步回调函数</td></tr>
+        <tr><td><code>select</code></td><td>默认：.hitokoto</td><td>是</td><td>选择器，配合 encode=js 使用</td></tr>
+        <tr><td><code>min_length</code></td><td>默认：0</td><td>是</td><td>返回句子的最小长度（包含）</td></tr>
+        <tr><td><code>max_length</code></td><td>默认：30</td><td>是</td><td>返回句子的最大长度（包含）</td></tr>
+      </table>
+      <h3>句子类型</h3>
+      <table class="api-table">
+        <tr><th>参数</th><th>说明</th></tr>
+        <tr><td><code>a</code></td><td>动画</td></tr>
+        <tr><td><code>b</code></td><td>漫画</td></tr>
+        <tr><td><code>c</code></td><td>游戏</td></tr>
+        <tr><td><code>d</code></td><td>文学</td></tr>
+        <tr><td><code>e</code></td><td>原创</td></tr>
+        <tr><td><code>f</code></td><td>来自网络</td></tr>
+        <tr><td><code>g</code></td><td>其他</td></tr>
+        <tr><td><code>h</code></td><td>影视</td></tr>
+        <tr><td><code>i</code></td><td>诗词</td></tr>
+        <tr><td><code>j</code></td><td>网易云</td></tr>
+        <tr><td><code>k</code></td><td>哲学</td></tr>
+        <tr><td><code>l</code></td><td>抖机灵</td></tr>
+      </table>
+      <p style="margin-top: 12px; font-size: 0.9em; color: #888;">可选择多个分类，例如：<code>?c=a&amp;c=c</code>。其他类型参数将作为动画类型处理。</p>
+      <h3>返回编码</h3>
+      <table class="api-table">
+        <tr><th>参数</th><th>说明</th></tr>
+        <tr><td><code>text</code></td><td>返回纯文本</td></tr>
+        <tr><td><code>json</code></td><td>返回格式化后的 JSON 文本（默认）</td></tr>
+        <tr><td><code>js</code></td><td>返回指定选择器的同步调用函数，默认选择器为 .hitokoto</td></tr>
+      </table>
+      <h3>示例请求</h3>
+      <div class="endpoint"><span class="method">GET</span> /api?c=f</div>
+      <div class="endpoint"><span class="method">GET</span> /api?encode=text</div>
+      <div class="endpoint"><span class="method">GET</span> /api?callback=myCallback</div>
+      <div class="endpoint"><span class="method">GET</span> /api?min_length=10&amp;max_length=50</div>
+      <h3>返回值</h3>
+      <table class="api-table">
+        <tr><th>返回参数</th><th>描述</th></tr>
+        <tr><td><code>id</code></td><td>一言标识</td></tr>
+        <tr><td><code>uuid</code></td><td>一言唯一标识</td></tr>
+        <tr><td><code>hitokoto</code></td><td>一言正文</td></tr>
+        <tr><td><code>type</code></td><td>类型</td></tr>
+        <tr><td><code>from</code></td><td>一言的出处</td></tr>
+        <tr><td><code>from_who</code></td><td>一言的作者</td></tr>
+        <tr><td><code>creator</code></td><td>添加者</td></tr>
+        <tr><td><code>creator_uid</code></td><td>添加者用户标识</td></tr>
+        <tr><td><code>length</code></td><td>句子长度</td></tr>
+      </table>
+      <h3>响应示例</h3>
+      <div class="json-example">
+        {<br>
+        &nbsp;&nbsp;<span class="key">"id"</span>: <span class="number">7338</span>,<br>
+        &nbsp;&nbsp;<span class="key">"uuid"</span>: <span class="string">"75a45fd4-4f2f-45eb-80cb-6f0a7bcdfaf2"</span>,<br>
+        &nbsp;&nbsp;<span class="key">"hitokoto"</span>: <span class="string">"用代码表达言语的魅力，用代码书写山河的壮丽。"</span>,<br>
+        &nbsp;&nbsp;<span class="key">"type"</span>: <span class="string">"f"</span>,<br>
+        &nbsp;&nbsp;<span class="key">"from"</span>: <span class="string">"一言开发者中心"</span>,<br>
+        &nbsp;&nbsp;<span class="key">"from_who"</span>: <span class="string">"一言"</span>,<br>
+        &nbsp;&nbsp;<span class="key">"creator"</span>: <span class="string">"DreamOne"</span>,<br>
+        &nbsp;&nbsp;<span class="key">"creator_uid"</span>: <span class="number">9209</span>,<br>
+        &nbsp;&nbsp;<span class="key">"length"</span>: <span class="number">22</span><br>
+        }
+      </div>
+      <h3>其他接口</h3>
+      <div class="endpoint"><span class="method">GET</span> /api/categories - 获取分类列表</div>
+    </div>
+    <div class="card">
+      <h2>句子分类</h2>
+      <div style="margin-top: 12px;">
+        <span class="tag">a - 动画</span>
+        <span class="tag">b - 漫画</span>
+        <span class="tag">c - 游戏</span>
+        <span class="tag">d - 文学</span>
+        <span class="tag">e - 原创</span>
+        <span class="tag">f - 网络</span>
+        <span class="tag">g - 其他</span>
+        <span class="tag">h - 影视</span>
+        <span class="tag">i - 诗词</span>
+        <span class="tag">j - 网易云</span>
+        <span class="tag">k - 哲学</span>
+        <span class="tag">l - 抖机灵</span>
+      </div>
+    </div>
+    <div class="footer">
+      <p>数据来源: <a href="https://github.com/hitokoto-osc/sentences-bundle" target="_blank">hitokoto</a> | 参考文档: <a href="https://developer.hitokoto.cn/sentence/" target="_blank">developer.hitokoto.cn</a></p>
+      <p style="margin-top: 8px;">Powered by <a href="https://edgeone.ai" target="_blank">EdgeOne</a></p>
+      <p style="margin-top: 8px;"><a href="https://beian.miit.gov.cn/" target="_blank">豫ICP备2026013756号-1</a></p>
+    </div>
+  </div>
+  <script>
+    var typewriter = {
+      textEl: null,
+      sourceEl: null,
+      statusEl: null,
+      btn: null,
+      currentData: null,
+      nextData: null,
+      isDeleting: false,
+      displayText: "",
+      sourceText: "",
+      typingSpeed: 80,
+      deleteSpeed: 50,
+      timer: null,
+      state: "idle",
+      init: function() {
+        this.textEl = document.getElementById("hitokoto-text");
+        this.sourceEl = document.getElementById("hitokoto-source");
+        this.statusEl = document.getElementById("hitokoto-status");
+        this.btn = document.getElementById("refresh-btn");
+        this.loadData();
+      },
+      loadData: async function() {
+        this.btn.disabled = true;
+        try {
+          var res = await fetch("/api?t=" + Date.now());
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          var data = await res.json();
+          if (data.code && data.code !== 200) throw new Error(data.message || "API Error");
+          if (this.state === "idle" || (this.state === "typing" && !this.currentData)) {
+            this.currentData = data;
+            this.state = "typing";
+            this.run();
+          } else {
+            this.nextData = data;
+          }
+        } catch (err) {
+          console.error("Fetch error:", err);
+          this.textEl.textContent = "获取失败，请稍后重试";
+          this.sourceEl.textContent = "";
+          this.statusEl.innerHTML = "<span class='status-error'>✗</span> 错误: " + err.message;
+          this.btn.disabled = false;
+          this.state = "idle";
+        }
+      },
+      getSourceText: function(data) {
+        var fromText = data.from || "";
+        var fromWhoText = data.from_who || "";
+        var sourceParts = [];
+        if (fromText) sourceParts.push(fromText);
+        if (fromWhoText) sourceParts.push(fromWhoText);
+        return sourceParts.length > 0 ? "—— " + sourceParts.join(" · ") : "";
+      },
+      run: function() {
+        if (!this.currentData) {
+          this.loadData();
+          return;
+        }
+        var fullText = this.currentData.hitokoto || "";
+        var fullSource = this.getSourceText(this.currentData);
+        this.statusEl.innerHTML = "<span class='status-ok'>✓</span> 分类: " + (this.currentData.category_name || this.currentData.type || "") + " | 长度: " + (this.currentData.length || 0) + "字";
+        if (this.state === "typing") {
+          if (this.displayText.length < fullText.length) {
+            this.displayText = fullText.substring(0, this.displayText.length + 1);
+            this.textEl.textContent = this.displayText;
+            this.sourceEl.textContent = "";
+            this.timer = setTimeout(function() { typewriter.run(); }, this.typingSpeed);
+          } else if (this.sourceText.length < fullSource.length) {
+            this.sourceText = fullSource.substring(0, this.sourceText.length + 1);
+            this.sourceEl.textContent = this.sourceText;
+            this.timer = setTimeout(function() { typewriter.run(); }, this.typingSpeed);
+          } else {
+            this.state = "displaying";
+            this.btn.disabled = false;
+          }
+        } else if (this.state === "deleting") {
+          if (this.sourceText.length > 0) {
+            this.sourceText = fullSource.substring(0, this.sourceText.length - 1);
+            this.sourceEl.textContent = this.sourceText;
+            this.timer = setTimeout(function() { typewriter.run(); }, this.deleteSpeed);
+          } else if (this.displayText.length > 0) {
+            this.displayText = fullText.substring(0, this.displayText.length - 1);
+            this.textEl.textContent = this.displayText;
+            this.timer = setTimeout(function() { typewriter.run(); }, this.deleteSpeed);
+          } else {
+            this.currentData = this.nextData;
+            this.nextData = null;
+            this.state = "typing";
+            if (!this.currentData) {
+              this.loadData();
+            } else {
+              this.run();
+            }
+          }
+        }
+      },
+      refresh: function() {
+        if (this.state === "displaying") {
+          if (this.timer) clearTimeout(this.timer);
+          this.state = "deleting";
+          this.btn.disabled = true;
+          this.run();
+        }
+      }
+    };
+    async function fetchHitokoto() {
+      typewriter.refresh();
+    }
+    typewriter.init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+name: Update Sentences Data
+
+on:
+  schedule:
+    # 每天凌晨 3 点运行 (UTC)
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Fetch latest sentences
+      run: node scripts/fetch-sentences.js
+
+    - name: Check for changes
+      id: check_changes
+      run: |
+        if git diff --quiet data/; then
+          echo "changed=false" >> $GITHUB_OUTPUT
+        else
+          echo "changed=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Commit and push changes
+      if: steps.check_changes.outputs.changed == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add data/
+        git commit -m "chore: auto-update sentences data $(date +%Y-%m-%d)"
+        git push
