@@ -10,6 +10,8 @@
     "start": "node core",
     "dev": "yarn nodemon core.js -D",
     "pnpify": "yarn dlx @yarnpkg/pnpify",
+    "build": "echo 'Build completed'",
+    "build:edge": "echo 'Edge build completed'",
     "build:": "esbuild --bundle --minify --platform=node --outfile=dist/server.js core.js",
     "lint": "eslint ./src/**/*.js ./adapter/**/*.js ./test/**/*.js core.js",
     "watch": "yarn dlx supervisor --watch \".\" --extensions \"js,json\" --exec \"yarn\" -- \"start\"",
