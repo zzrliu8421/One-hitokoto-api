@@ -1,10 +1,21 @@
 {
-  "name": "hitokoto-edgeone-pages",
+  "name": "hitokoto-api",
   "version": "1.0.0",
-  "description": "Hitokoto API 部署在 EdgeOne Pages 平台",
-  "type": "module",
+  "description": "一言API服务 - 基于 EdgeOne Pages 部署",
+  "main": "index.js",
   "scripts": {
-    "build": "node scripts/fetch-sentences.js"
+    "dev": "edgeone dev",
+    "deploy": "edgeone deploy"
   },
-  "devDependencies": {}
+  "keywords": [
+    "hitokoto",
+    "api",
+    "edgeone",
+    "pages"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@edgeone/cli": "^1.0.0"
+  }
 }
