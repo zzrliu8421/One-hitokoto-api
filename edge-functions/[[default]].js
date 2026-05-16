@@ -7,81 +7,100 @@ function uuidv4() {
 }
 
 const CATEGORIES = [
-  { key: 'a', name: '动画', desc: 'Anime' },
-  { key: 'b', name: '漫画', desc: 'Comic' },
-  { key: 'c', name: '游戏', desc: 'Game' },
-  { key: 'd', name: '文学', desc: 'Literature' },
-  { key: 'e', name: '原创', desc: 'Original' },
-  { key: 'f', name: '网络', desc: 'Internet' },
-  { key: 'g', name: '其他', desc: 'Other' },
-  { key: 'h', name: '影视', desc: 'Video' },
-  { key: 'i', name: '诗词', desc: 'Poem' },
-  { key: 'j', name: '网易云', desc: 'NCM' },
-  { key: 'k', name: '哲学', desc: 'Philosophy' },
-  { key: 'l', name: '抖机灵', desc: 'Funny' }
+  { key: 'a', name: '动画' },
+  { key: 'b', name: '漫画' },
+  { key: 'c', name: '游戏' },
+  { key: 'd', name: '文学' },
+  { key: 'e', name: '原创' },
+  { key: 'f', name: '网络' },
+  { key: 'g', name: '其他' },
+  { key: 'h', name: '影视' },
+  { key: 'i', name: '诗词' },
+  { key: 'j', name: '网易云' },
+  { key: 'k', name: '哲学' },
+  { key: 'l', name: '抖机灵' }
 ];
 
 const CDN_BASE_URL = 'https://cdn.jsdelivr.net/gh/hitokoto-osc/sentences-bundle@latest';
 
-const cachedSentences = new Map();
-const cachedCategories = new Map();
+let cachedSentences = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 5 * 60 * 1000;
 
-async function fetchJSON(url) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
-  return await response.json();
-}
-
-async function loadCategorySentences(categoryKey) {
-  if (cachedSentences.has(categoryKey)) {
-    return cachedSentences.get(categoryKey);
-  }
-
+async function fetchWithTimeout(url, timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
   try {
-    const url = `${CDN_BASE_URL}/sentences/${categoryKey}.json`;
-    const data = await fetchJSON(url);
-    cachedSentences.set(categoryKey, data);
-    return data;
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response;
   } catch (error) {
-    console.error(`Failed to load category ${categoryKey}:`, error);
-    return [];
+    clearTimeout(timeoutId);
+    throw error;
   }
 }
 
-async function getAllCategories() {
-  if (cachedCategories.size > 0) {
-    return Array.from(cachedCategories.values());
+async function loadAllSentences() {
+  const now = Date.now();
+  if (cachedSentences && (now - cacheTimestamp) < CACHE_TTL) {
+    return cachedSentences;
   }
 
-  try {
-    const url = `${CDN_BASE_URL}/categories.json`;
-    const categories = await fetchJSON(url);
-    categories.forEach((cat) => cachedCategories.set(cat.key, cat));
-    return categories;
-  } catch (error) {
-    console.error('Failed to load categories:', error);
-    return CATEGORIES;
+  const allSentences = [];
+  
+  for (const category of CATEGORIES) {
+    try {
+      const response = await fetchWithTimeout(
+        `${CDN_BASE_URL}/sentences/${category.key}.json`,
+        3000
+      );
+      
+      if (!response.ok) continue;
+      
+      const data = await response.json();
+      
+      if (Array.isArray(data)) {
+        for (const item of data) {
+          if (item && (item.hitokoto || item.content)) {
+            allSentences.push({
+              id: item.uuid || uuidv4(),
+              hitokoto: item.hitokoto || item.content,
+              type: item.type || category.key,
+              from: item.from || item.source || '',
+              from_who: item.from_who || item.author || '',
+              creator: item.creator || 'hitokoto',
+              creator_uid: item.creator_uid || 0,
+              reviewer: item.reviewer || 0,
+              uuid: item.uuid || uuidv4(),
+              created_at: item.created_at || new Date().toISOString()
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to load ${category.key}:`, error.message);
+    }
   }
+
+  cachedSentences = allSentences;
+  cacheTimestamp = now;
+  
+  return allSentences;
 }
 
-function getRandomElement(array) {
-  if (!array || array.length === 0) return null;
-  return array[Math.floor(Math.random() * array.length)];
-}
+function getRandomSentence(sentences, categories, minLength, maxLength) {
+  const filtered = sentences.filter(s => {
+    if (categories.length > 0 && !categories.includes(s.type)) {
+      return false;
+    }
+    const len = s.hitokoto.length;
+    return len >= minLength && len <= maxLength;
+  });
 
-function formatSentence(sentence, categoryKey) {
-  return {
-    id: sentence.uuid || uuidv4(),
-    hitokoto: sentence.hitokoto || sentence.content,
-    type: sentence.type || categoryKey,
-    from: sentence.from || sentence.source,
-    from_who: sentence.from_who || sentence.author,
-    creator: sentence.creator || 'hitokoto-api',
-    creator_uid: sentence.creator_uid,
-    reviewer: sentence.reviewer,
-    uuid: sentence.uuid || uuidv4(),
-    created_at: sentence.created_at || new Date().toISOString()
-  };
+  if (filtered.length === 0) return null;
+  
+  return filtered[Math.floor(Math.random() * filtered.length)];
 }
 
 function parseQueryParams(url) {
@@ -94,46 +113,16 @@ function parseQueryParams(url) {
   let charset = params.get('charset') || 'utf-8';
   let callback = params.get('callback') || '';
   
+  if (isNaN(minLength)) minLength = 0;
+  if (isNaN(maxLength)) maxLength = 10000;
+  
   if (maxLength < minLength) {
-    [minLength, maxLength] = [maxLength, minLength];
+    const tmp = minLength;
+    minLength = maxLength;
+    maxLength = tmp;
   }
   
-  if (categories.length === 0) {
-    categories = CATEGORIES.map(c => c.key);
-  }
-  
-  return {
-    categories,
-    encode,
-    minLength,
-    maxLength,
-    charset,
-    callback
-  };
-}
-
-function filterSentences(sentences, minLength, maxLength) {
-  return sentences.filter(s => {
-    const text = s.hitokoto || s.content;
-    if (!text) return false;
-    const length = text.length;
-    return length >= minLength && length <= maxLength;
-  });
-}
-
-async function getRandomSentence(categories, minLength, maxLength) {
-  const shuffledCategories = [...categories].sort(() => Math.random() - 0.5);
-  
-  for (const categoryKey of shuffledCategories) {
-    const sentences = await loadCategorySentences(categoryKey);
-    const filtered = filterSentences(sentences, minLength, maxLength);
-    if (filtered.length > 0) {
-      const sentence = getRandomElement(filtered);
-      return formatSentence(sentence, categoryKey);
-    }
-  }
-  
-  return null;
+  return { categories, encode, minLength, maxLength, charset, callback };
 }
 
 function createResponse(data, encode, callback, charset) {
@@ -145,12 +134,10 @@ function createResponse(data, encode, callback, charset) {
       body = data.hitokoto;
       contentType = `text/plain; charset=${charset}`;
       break;
-      
     case 'js':
-      body = `${callback || 'hitokoto'}(JSON.parse('${JSON.stringify(data).replace(/'/g, "\\'")}'));`;
+      body = `${callback || 'hitokoto'}(${JSON.stringify(data)});`;
       contentType = `application/javascript; charset=${charset}`;
       break;
-      
     case 'json':
     default:
       body = JSON.stringify(data);
@@ -164,7 +151,8 @@ function createResponse(data, encode, callback, charset) {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
       'Access-Control-Expose-Headers': 'X-Request-Id',
-      'X-Request-Id': uuidv4()
+      'X-Request-Id': uuidv4(),
+      'Cache-Control': 'no-cache'
     }
   });
 }
@@ -185,67 +173,84 @@ function createErrorResponse(status, message) {
 }
 
 export default async function onRequest(context) {
-  const request = context.request;
-  const url = new URL(request.url);
-  
-  if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Max-Age': '86400'
-      }
-    });
+  try {
+    const request = context.request;
+    const url = new URL(request.url);
+    
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Max-Age': '86400'
+        }
+      });
+    }
+    
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      return createErrorResponse(405, 'Method Not Allowed');
+    }
+    
+    if (url.pathname === '/ping') {
+      return new Response(JSON.stringify({
+        status: 200,
+        message: 'ok',
+        data: {},
+        ts: Date.now()
+      }), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+    
+    if (url.pathname === '/status') {
+      return new Response(JSON.stringify({
+        name: 'hitokoto-api',
+        version: '2.0.0-edge',
+        message: 'Love us? donate at https://hitokoto.cn/donate',
+        website: 'https://hitokoto.cn',
+        server_id: 'edge-one',
+        server_status: {
+          categories: CATEGORIES.length
+        },
+        copyright: 'MoeCraft © ' + new Date().getFullYear() + ' All Rights Reserved.',
+        now: new Date().toString(),
+        ts: Date.now()
+      }), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+    
+    const params = parseQueryParams(url);
+    
+    const sentences = await loadAllSentences();
+    
+    if (sentences.length === 0) {
+      return createErrorResponse(503, 'Service temporarily unavailable');
+    }
+    
+    const sentence = getRandomSentence(
+      sentences,
+      params.categories,
+      params.minLength,
+      params.maxLength
+    );
+    
+    if (!sentence) {
+      return createErrorResponse(404, 'No matching sentences found');
+    }
+    
+    return createResponse(sentence, params.encode, params.callback, params.charset);
+    
+  } catch (error) {
+    console.error('Edge Function Error:', error);
+    return createErrorResponse(500, 'Internal Server Error: ' + error.message);
   }
-  
-  if (request.method !== 'GET' && request.method !== 'HEAD') {
-    return createErrorResponse(405, 'Method Not Allowed');
-  }
-  
-  if (url.pathname === '/ping') {
-    return new Response(JSON.stringify({
-      status: 200,
-      message: 'ok',
-      data: {},
-      ts: Date.now()
-    }), {
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Access-Control-Allow-Origin': '*'
-      }
-    });
-  }
-  
-  if (url.pathname === '/status') {
-    const categories = await getAllCategories();
-    return new Response(JSON.stringify({
-      name: 'hitokoto-api',
-      version: '2.0.0-edge',
-      message: 'Love us? donate at https://hitokoto.cn/donate',
-      website: 'https://hitokoto.cn',
-      server_id: 'edge-one',
-      server_status: {
-        categories: categories.length
-      },
-      copyright: 'MoeCraft © ' + new Date().getFullYear() + ' All Rights Reserved. Open Source at https://github.com/hitokoto-osc/hitokoto-api .',
-      now: new Date().toString(),
-      ts: Date.now()
-    }), {
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Access-Control-Allow-Origin': '*'
-      }
-    });
-  }
-  
-  const params = parseQueryParams(url);
-  const sentence = await getRandomSentence(params.categories, params.minLength, params.maxLength);
-  
-  if (!sentence) {
-    return createErrorResponse(404, 'No matching sentences found');
-  }
-  
-  return createResponse(sentence, params.encode, params.callback, params.charset);
 }
