@@ -16,22 +16,38 @@ const CATEGORY_MAP = {
 };
 
 export function onRequestGet(context) {
-  const categories = Object.values(CATEGORY_MAP);
-  
-  return new Response(JSON.stringify({
-    code: 200,
-    data: categories,
-    count: categories.length
-  }), {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Cache-Control': 'max-age=86400'
+  try {
+    var categories = [];
+    for (var key in CATEGORY_MAP) {
+      categories.push(CATEGORY_MAP[key]);
     }
-  });
+
+    return new Response(JSON.stringify({
+      code: 200,
+      data: categories,
+      count: categories.length
+    }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Cache-Control': 'max-age=86400'
+      }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      code: 500,
+      message: 'Internal server error'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
 }
 
 export function onRequestOptions(context) {

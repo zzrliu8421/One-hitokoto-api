@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "一言API服务 - 基于 EdgeOne Pages 部署",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "dev": "echo 'Use edgeone CLI directly: edgeone dev'",
     "deploy": "echo 'Use edgeone CLI directly: edgeone deploy'",
