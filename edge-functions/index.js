@@ -18,10 +18,11 @@ export function onRequestGet(context) {
       '    .card { background: white; border-radius: 16px; padding: 30px; margin-bottom: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }' +
       '    .card h2 { color: #667eea; margin-bottom: 16px; font-size: 1.5em; }' +
       '    .demo-box { background: #f8f9fa; border-radius: 12px; padding: 24px; margin: 20px 0; text-align: center; }' +
-      '    .demo-text { font-size: 1.3em; color: #333; margin-bottom: 12px; line-height: 1.6; }' +
-      '    .demo-source { color: #666; font-size: 0.95em; }' +
-      '    .refresh-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 32px; border-radius: 25px; font-size: 1em; cursor: pointer; margin-top: 16px; }' +
+      '    .demo-text { font-size: 1.3em; color: #333; margin-bottom: 12px; line-height: 1.6; min-height: 2em; }' +
+      '    .demo-source { color: #666; font-size: 0.95em; min-height: 1.5em; }' +
+      '    .refresh-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 32px; border-radius: 25px; font-size: 1em; cursor: pointer; margin-top: 16px; transition: all 0.3s ease; }' +
       '    .refresh-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4); }' +
+      '    .refresh-btn:active { transform: translateY(0); }' +
       '    .api-table { width: 100%; border-collapse: collapse; margin-top: 16px; }' +
       '    .api-table th, .api-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }' +
       '    .api-table th { color: #667eea; font-weight: 600; }' +
@@ -31,6 +32,8 @@ export function onRequestGet(context) {
       '    .footer { text-align: center; color: white; opacity: 0.8; margin-top: 40px; }' +
       '    .footer a { color: white; text-decoration: underline; }' +
       '    .tag { display: inline-block; background: #e9d8fd; color: #6b46c1; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; margin: 4px; }' +
+      '    .status-ok { color: #48bb78; font-weight: bold; }' +
+      '    .status-error { color: #f56565; font-weight: bold; }' +
       '    @media (max-width: 600px) { .header h1 { font-size: 2em; } .card { padding: 20px; } .demo-text { font-size: 1.1em; } }' +
       '  </style>' +
       '</head>' +
@@ -45,8 +48,9 @@ export function onRequestGet(context) {
       '      <div class="demo-box">' +
       '        <div class="demo-text" id="hitokoto-text">正在加载...</div>' +
       '        <div class="demo-source" id="hitokoto-source"></div>' +
+      '        <div style="margin-top: 8px; font-size: 0.85em; color: #999;" id="hitokoto-status"></div>' +
       '        <br>' +
-      '        <button class="refresh-btn" onclick="fetchHitokoto()">换一句</button>' +
+      '        <button class="refresh-btn" id="refresh-btn" onclick="fetchHitokoto()">换一句</button>' +
       '      </div>' +
       '    </div>' +
       '    <div class="card">' +
@@ -96,15 +100,31 @@ export function onRequestGet(context) {
       '    async function fetchHitokoto() {' +
       '      var textEl = document.getElementById("hitokoto-text");' +
       '      var sourceEl = document.getElementById("hitokoto-source");' +
-      '      textEl.textContent = "加载中...";' +
+      '      var statusEl = document.getElementById("hitokoto-status");' +
+      '      var btn = document.getElementById("refresh-btn");' +
+      '      textEl.textContent = "正在加载...";' +
       '      sourceEl.textContent = "";' +
+      '      statusEl.textContent = "";' +
+      '      btn.disabled = true;' +
       '      try {' +
       '        var res = await fetch("/api/hitokoto");' +
+      '        if (!res.ok) {' +
+      '          throw new Error("HTTP " + res.status);' +
+      '        }' +
       '        var data = await res.json();' +
+      '        if (data.code && data.code !== 200) {' +
+      '          throw new Error(data.message || "API Error");' +
+      '        }' +
       '        textEl.textContent = data.hitokoto || "获取失败";' +
       '        sourceEl.textContent = data.from ? "—— 《" + data.from + "》" : "";' +
+      '        statusEl.innerHTML = "<span class=\'status-ok\'>✓</span> 分类: " + (data.category_name || data.type) + " | 长度: " + data.length + "字";' +
       '      } catch (err) {' +
+      '        console.error("Fetch error:", err);' +
       '        textEl.textContent = "获取失败，请稍后重试";' +
+      '        sourceEl.textContent = "";' +
+      '        statusEl.innerHTML = "<span class=\'status-error\'>✗</span> 错误: " + err.message;' +
+      '      } finally {' +
+      '        btn.disabled = false;' +
       '      }' +
       '    }' +
       '    fetchHitokoto();' +
