@@ -1,7 +1,7 @@
 // 一言API核心实现
 // 数据来源: 本地 sentences-data.js 模块（构建时预加载）
 
-import { getSentencesByCategory } from './sentences-data.js';
+import sentencesData from './sentences-data.js';
 
 // 句子类型映射
 const CATEGORY_MAP = {
@@ -29,7 +29,7 @@ const memoryCache = new Map();
  */
 function getLocalSentences(category) {
   try {
-    const sentences = getSentencesByCategory(category);
+    const sentences = sentencesData[category] || [];
     return sentences.length > 0 ? sentences : [];
   } catch (e) {
     console.error('Error loading local sentences:', e);
@@ -43,7 +43,7 @@ function getLocalSentences(category) {
  * @returns {Array} 句子数组
  */
 function getSentences(category) {
-  const cacheKey = `sentences_${category}`;
+  const cacheKey = 'sentences_' + category;
 
   // 1. 尝试从内存缓存获取
   if (memoryCache.has(cacheKey)) {
@@ -227,7 +227,7 @@ export async function onRequestGet(context) {
     console.error('Error in onRequestGet:', error);
     return createResponse({
       code: 500,
-      message: 'Internal server error'
+      message: 'Internal server error: ' + error.message
     }, 500);
   }
 }
