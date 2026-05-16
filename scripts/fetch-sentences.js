@@ -1,6 +1,8 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CATEGORIES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'];
 const BASE_URL = 'https://raw.githubusercontent.com/hitokoto-osc/sentences-bundle/master/sentences';
 
@@ -13,7 +15,8 @@ async function fetchJSON(url) {
 }
 
 async function main() {
-  const outputDir = path.resolve(process.cwd(), 'edge-functions', '_data');
+  const projectRoot = path.resolve(__dirname, '..');
+  const outputDir = path.join(projectRoot, 'edge-functions', '_data');
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
