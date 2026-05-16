@@ -165,7 +165,7 @@ export function onRequestGet(context) {
   <div class="container">
     <div class="header">
       <h1>一言 API</h1>
-      <p>基于 EdgeOne Pages 部署的优雅句子服务</p>
+      <p>基于 EdgeOne Pages 部署的一言句子服务</p>
     </div>
     
     <div class="card">

@@ -1,6 +1,8 @@
 // 一言API核心实现
 // 数据来源: https://github.com/hitokoto-osc/sentences-bundle
 
+import { getFallbackSentences } from './fallback-sentences.js';
+
 // 句子类型映射
 const CATEGORY_MAP = {
   a: { name: '动画', desc: 'Anime' },
@@ -17,38 +19,97 @@ const CATEGORY_MAP = {
   l: { name: '抖机灵', desc: 'Wit' }
 };
 
-// 句子源文件基础URL
-const SENTENCES_BASE_URL = 'https://raw.githubusercontent.com/hitokoto-osc/sentences-bundle/master/sentences';
+// 多个镜像源，按优先级排列
+const MIRROR_SOURCES = [
+  'https://raw.githubusercontent.com/hitokoto-osc/sentences-bundle/master/sentences',
+  'https://raw.kkgithub.com/hitokoto-osc/sentences-bundle/master/sentences',
+  'https://ghproxy.net/https://raw.githubusercontent.com/hitokoto-osc/sentences-bundle/master/sentences',
+  'https://mirror.ghproxy.com/https://raw.githubusercontent.com/hitokoto-osc/sentences-bundle/master/sentences'
+];
 
 // 缓存配置
 const CACHE_TTL = 3600;
+const FETCH_TIMEOUT = 5000;
+const MAX_RETRIES = 2;
 
 /**
- * 获取句子数据
+ * 带超时的fetch
+ * @param {string} url - 请求URL
+ * @param {Object} options - fetch选项
+ * @param {number} timeout - 超时时间(ms)
+ * @returns {Promise<Response>}
+ */
+async function fetchWithTimeout(url, options = {}, timeout = FETCH_TIMEOUT) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
+/**
+ * 从单个源获取句子数据
+ * @param {string} category - 句子类型
+ * @param {string} baseUrl - 源基础URL
+ * @returns {Promise<Array>} 句子数组
+ */
+async function fetchFromSource(category, baseUrl) {
+  const url = `${baseUrl}/${category}.json`;
+
+  const response = await fetchWithTimeout(url, {
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': 'Hitokoto-API/EdgeOne-Pages'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) ? data : [];
+}
+
+/**
+ * 获取句子数据（多源重试）
  * @param {string} category - 句子类型
  * @returns {Promise<Array>} 句子数组
  */
 async function fetchSentences(category) {
-  const url = `${SENTENCES_BASE_URL}/${category}.json`;
+  const errors = [];
 
-  try {
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'Hitokoto-API/EdgeOne-Pages'
+  for (const baseUrl of MIRROR_SOURCES) {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const sentences = await fetchFromSource(category, baseUrl);
+        if (sentences.length > 0) {
+          return sentences;
+        }
+      } catch (error) {
+        const errorMsg = `Source ${baseUrl}, attempt ${attempt + 1}: ${error.message}`;
+        console.error(errorMsg);
+        errors.push(errorMsg);
+
+        if (attempt < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+        }
       }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch ${category}: ${response.status}`);
     }
-
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error(`Error fetching sentences for category ${category}:`, error);
-    return [];
   }
+
+  console.error(`All sources failed for category ${category}:`, errors);
+  console.log(`Using fallback sentences for category ${category}`);
+  return getFallbackSentences(category);
 }
 
 /**
@@ -64,7 +125,10 @@ async function getSentencesWithCache(category, cache) {
     const cached = await cache.match(cacheKey);
     if (cached) {
       try {
-        return await cached.json();
+        const data = await cached.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data;
+        }
       } catch {
         // 缓存解析失败，继续获取新数据
       }
