@@ -21,7 +21,7 @@ const CATEGORY_MAP = {
 const SENTENCES_BASE_URL = 'https://raw.githubusercontent.com/hitokoto-osc/sentences-bundle/master/sentences';
 
 // 缓存配置
-const CACHE_TTL = 3600; // 1小时
+const CACHE_TTL = 3600;
 
 /**
  * 获取句子数据
@@ -30,7 +30,7 @@ const CACHE_TTL = 3600; // 1小时
  */
 async function fetchSentences(category) {
   const url = `${SENTENCES_BASE_URL}/${category}.json`;
-  
+
   try {
     const response = await fetch(url, {
       headers: {
@@ -38,11 +38,11 @@ async function fetchSentences(category) {
         'User-Agent': 'Hitokoto-API/EdgeOne-Pages'
       }
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch ${category}: ${response.status}`);
     }
-    
+
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   } catch (error) {
@@ -59,31 +59,38 @@ async function fetchSentences(category) {
  */
 async function getSentencesWithCache(category, cache) {
   const cacheKey = `https://hitokoto-api.internal/sentences/${category}`;
-  
-  // 尝试从缓存读取
-  const cached = await cache.match(cacheKey);
-  if (cached) {
-    try {
-      return await cached.json();
-    } catch {
-      // 缓存解析失败，继续获取新数据
+
+  try {
+    const cached = await cache.match(cacheKey);
+    if (cached) {
+      try {
+        return await cached.json();
+      } catch {
+        // 缓存解析失败，继续获取新数据
+      }
     }
+  } catch {
+    // 缓存读取失败，继续获取新数据
   }
-  
+
   // 获取新数据
   const sentences = await fetchSentences(category);
-  
+
   // 存入缓存
   if (sentences.length > 0) {
-    const response = new Response(JSON.stringify(sentences), {
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': `max-age=${CACHE_TTL}`
-      }
-    });
-    await cache.put(cacheKey, response);
+    try {
+      const response = new Response(JSON.stringify(sentences), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': `max-age=${CACHE_TTL}`
+        }
+      });
+      await cache.put(cacheKey, response);
+    } catch {
+      // 缓存写入失败，不影响主流程
+    }
   }
-  
+
   return sentences;
 }
 
@@ -113,7 +120,7 @@ function buildResponse(sentence, format = 'json') {
   }
 
   const categoryInfo = CATEGORY_MAP[sentence.type] || { name: '未知', desc: 'Unknown' };
-  
+
   const baseResponse = {
     id: sentence.id,
     uuid: sentence.uuid,
@@ -133,8 +140,8 @@ function buildResponse(sentence, format = 'json') {
   }
 
   if (format === 'js') {
-    return { 
-      js: `hitokoto="${sentence.hitokoto.replace(/"/g, '\\"')}"` 
+    return {
+      js: `hitokoto="${sentence.hitokoto.replace(/"/g, '\\"')}"`
     };
   }
 
@@ -170,30 +177,38 @@ function createResponse(data, status = 200, extraHeaders = {}) {
 export async function onRequestGet(context) {
   const { request } = context;
   const url = new URL(request.url);
-  
+
   // 获取查询参数
   const category = url.searchParams.get('c') || url.searchParams.get('category') || '';
   const format = url.searchParams.get('encode') || url.searchParams.get('format') || 'json';
   const callback = url.searchParams.get('callback') || '';
   const minLength = parseInt(url.searchParams.get('min_length') || '0', 10);
   const maxLength = parseInt(url.searchParams.get('max_length') || '0', 10);
-  
-  // 获取Edge Cache
-  const cache = caches.default;
-  
+
+  // 获取Edge Cache（带降级处理）
+  let cache = null;
+  try {
+    cache = caches.default;
+  } catch {
+    // 缓存不可用，继续无缓存模式
+  }
+
   let sentences = [];
-  let selectedCategory = category;
-  
+
   // 如果指定了类型，获取对应类型句子
   if (category && CATEGORY_MAP[category]) {
-    sentences = await getSentencesWithCache(category, cache);
+    sentences = cache
+      ? await getSentencesWithCache(category, cache)
+      : await fetchSentences(category);
   } else {
     // 随机选择一个类型
     const categories = Object.keys(CATEGORY_MAP);
-    selectedCategory = categories[Math.floor(Math.random() * categories.length)];
-    sentences = await getSentencesWithCache(selectedCategory, cache);
+    const selectedCategory = categories[Math.floor(Math.random() * categories.length)];
+    sentences = cache
+      ? await getSentencesWithCache(selectedCategory, cache)
+      : await fetchSentences(selectedCategory);
   }
-  
+
   // 根据长度过滤
   if (minLength > 0) {
     sentences = sentences.filter(s => s.length >= minLength);
@@ -201,13 +216,13 @@ export async function onRequestGet(context) {
   if (maxLength > 0) {
     sentences = sentences.filter(s => s.length <= maxLength);
   }
-  
+
   // 获取随机句子
   const sentence = getRandomSentence(sentences);
-  
+
   // 构建响应
-  let responseData = buildResponse(sentence, format);
-  
+  const responseData = buildResponse(sentence, format);
+
   // 处理JSONP回调
   if (callback && format === 'json') {
     const jsResponse = `${callback}(${JSON.stringify(responseData)});`;
@@ -220,7 +235,7 @@ export async function onRequestGet(context) {
       }
     });
   }
-  
+
   // 纯文本格式直接返回
   if (format === 'text') {
     return new Response(responseData.text, {
@@ -232,7 +247,7 @@ export async function onRequestGet(context) {
       }
     });
   }
-  
+
   // JS格式直接返回
   if (format === 'js') {
     return new Response(responseData.js, {
@@ -244,7 +259,7 @@ export async function onRequestGet(context) {
       }
     });
   }
-  
+
   return createResponse(responseData);
 }
 

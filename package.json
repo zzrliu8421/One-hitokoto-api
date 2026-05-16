@@ -4,8 +4,8 @@
   "description": "一言API服务 - 基于 EdgeOne Pages 部署",
   "main": "index.js",
   "scripts": {
-    "dev": "edgeone dev",
-    "deploy": "edgeone deploy"
+    "dev": "echo 'Use edgeone CLI directly: edgeone dev'",
+    "deploy": "echo 'Use edgeone CLI directly: edgeone deploy'"
   },
   "keywords": [
     "hitokoto",
@@ -14,8 +14,5 @@
     "pages"
   ],
   "author": "",
-  "license": "MIT",
-  "devDependencies": {
-    "@edgeone/cli": "^1.0.0"
-  }
+  "license": "MIT"
 }
