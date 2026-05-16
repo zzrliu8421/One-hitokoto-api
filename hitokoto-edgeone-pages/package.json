@@ -1,0 +1,10 @@
+{
+  "name": "hitokoto-edgeone-pages",
+  "version": "1.0.0",
+  "description": "Hitokoto API 部署在 EdgeOne Pages 平台",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/fetch-sentences.cjs"
+  },
+  "devDependencies": {}
+}

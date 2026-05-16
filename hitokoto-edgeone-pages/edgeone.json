@@ -1,0 +1,5 @@
+{
+  "buildCommand": "node scripts/fetch-sentences.cjs",
+  "outputDirectory": "public",
+  "nodeVersion": "20.18.0"
+}
