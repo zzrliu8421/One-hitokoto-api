@@ -42,7 +42,17 @@ module.exports = [
   ],
   [
     'koa-favicon',
-    require('koa-favicon')(path.join(__dirname, '../public/favicon.ico')),
+    (() => {
+      try {
+        const faviconPath = path.join(__dirname, '../public/favicon.ico');
+        if (require('fs').existsSync(faviconPath)) {
+          return require('koa-favicon')(faviconPath);
+        }
+      } catch {
+        // favicon 文件不可用，跳过此中间件
+      }
+      return false;
+    })(),
   ],
   !nconf.get('server:compress_body') || [
     'koa-compress',
