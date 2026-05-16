@@ -1,5 +1,6 @@
 {
   "name": "hitokoto-api",
+  "installCommand": "npm install",
   "headers": [
     {
       "source": "/*",
