@@ -1,4 +1,4 @@
-// 一言API核心实现
+// 一言API核心实现 - 高性能优化版
 // 数据来源: 本地 data/ 目录下的 JSON 文件 + 内联备用数据
 
 // 句子类型映射
@@ -16,6 +16,8 @@ const CATEGORY_MAP = {
   k: { name: '哲学', desc: 'Philosophy' },
   l: { name: '抖机灵', desc: 'Wit' }
 };
+
+const ALL_CATEGORIES = Object.keys(CATEGORY_MAP);
 
 // 内联备用句子数据（当 fetch 读取失败时使用）
 const FALLBACK_DATA = {
@@ -90,8 +92,43 @@ const FALLBACK_DATA = {
   ]
 };
 
-// 内存缓存
+// 内存缓存 - 存储所有分类的句子数据
 const memoryCache = new Map();
+
+// 预加载状态标记
+let preloadPromise = null;
+let preloadDone = false;
+
+// fetch 超时时间 (毫秒)
+const FETCH_TIMEOUT = 3000;
+
+/**
+ * 带超时的 fetch 请求
+ * @param {string} url - 请求URL
+ * @param {number} timeout - 超时时间(毫秒)
+ * @returns {Promise<Response>}
+ */
+async function fetchWithTimeout(url, timeout) {
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() {
+    controller.abort();
+  }, timeout);
+
+  try {
+    var response = await fetch(url, {
+      signal: controller.signal,
+      cf: {
+        cacheTtl: 86400,
+        cacheEverything: true
+      }
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (e) {
+    clearTimeout(timeoutId);
+    throw e;
+  }
+}
 
 /**
  * 从本地静态资源获取句子数据
@@ -100,10 +137,8 @@ const memoryCache = new Map();
  */
 async function fetchLocalSentences(category) {
   try {
-    // 使用绝对 URL 读取同域名下的静态 JSON 文件
-    // EdgeOne Pages Edge Functions 中 fetch 相对路径可能无法正确解析
     var url = 'https://hitokoto.api.sylv.top/data/' + category + '.json';
-    var response = await fetch(url);
+    var response = await fetchWithTimeout(url, FETCH_TIMEOUT);
 
     if (!response.ok) {
       throw new Error('HTTP ' + response.status);
@@ -112,13 +147,47 @@ async function fetchLocalSentences(category) {
     var data = await response.json();
     return Array.isArray(data) ? data : [];
   } catch (e) {
-    console.error('Error fetching local sentences for ' + category + ':', e);
+    console.error('Error fetching local sentences for ' + category + ':', e.message || e);
     return [];
   }
 }
 
 /**
- * 获取句子（本地静态资源优先，失败使用备用数据）
+ * 预加载所有分类数据（并发加载）
+ * 在函数冷启动时尽早调用，减少首次请求延迟
+ */
+async function preloadAllCategories() {
+  if (preloadDone || preloadPromise) {
+    return preloadPromise;
+  }
+
+  preloadPromise = Promise.all(
+    ALL_CATEGORIES.map(function(category) {
+      return fetchLocalSentences(category).then(function(sentences) {
+        if (sentences.length > 0) {
+          memoryCache.set('sentences_' + category, sentences);
+        } else if (FALLBACK_DATA[category]) {
+          memoryCache.set('sentences_' + category, FALLBACK_DATA[category]);
+        }
+        return { category: category, count: sentences.length };
+      });
+    })
+  ).then(function(results) {
+    preloadDone = true;
+    var totalLoaded = results.reduce(function(sum, r) { return sum + r.count; }, 0);
+    console.log('Preload complete: ' + totalLoaded + ' sentences loaded across ' + ALL_CATEGORIES.length + ' categories');
+    return results;
+  }).catch(function(err) {
+    console.error('Preload error:', err);
+    preloadDone = true;
+    return [];
+  });
+
+  return preloadPromise;
+}
+
+/**
+ * 获取句子（内存缓存优先，失败使用备用数据）
  * @param {string} category - 句子类型
  * @returns {Promise<Array>} 句子数组
  */
@@ -130,16 +199,23 @@ async function getSentences(category) {
     return memoryCache.get(cacheKey);
   }
 
-  // 2. 从本地静态资源获取
+  // 2. 等待预加载完成（如果正在进行）
+  if (preloadPromise && !preloadDone) {
+    await preloadPromise;
+    if (memoryCache.has(cacheKey)) {
+      return memoryCache.get(cacheKey);
+    }
+  }
+
+  // 3. 从本地静态资源获取
   var sentences = await fetchLocalSentences(category);
 
-  // 3. 如果本地获取失败，使用备用数据
+  // 4. 如果本地获取失败，使用备用数据
   if (sentences.length === 0 && FALLBACK_DATA[category]) {
-    console.log('Using fallback data for category: ' + category);
     sentences = FALLBACK_DATA[category];
   }
 
-  // 4. 存入内存缓存
+  // 5. 存入内存缓存
   if (sentences.length > 0) {
     memoryCache.set(cacheKey, sentences);
   }
@@ -217,7 +293,8 @@ function createResponse(data, status, extraHeaders) {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Cache-Control': 'no-cache'
+    'Cache-Control': 'public, max-age=0, s-maxage=60',
+    'Vary': 'Accept-Encoding'
   };
 
   for (var key in extraHeaders) {
@@ -235,6 +312,11 @@ function createResponse(data, status, extraHeaders) {
  */
 export async function onRequestGet(context) {
   try {
+    // 启动预加载（如果尚未开始）- 不等待，让其在后台执行
+    if (!preloadDone && !preloadPromise) {
+      context.waitUntil(preloadAllCategories());
+    }
+
     var request = context.request;
     var url = new URL(request.url);
 
@@ -252,8 +334,7 @@ export async function onRequestGet(context) {
       sentences = await getSentences(category);
     } else {
       // 随机选择一个类型
-      var categories = Object.keys(CATEGORY_MAP);
-      var selectedCategory = categories[Math.floor(Math.random() * categories.length)];
+      var selectedCategory = ALL_CATEGORIES[Math.floor(Math.random() * ALL_CATEGORIES.length)];
       sentences = await getSentences(selectedCategory);
     }
 
@@ -279,7 +360,8 @@ export async function onRequestGet(context) {
         headers: {
           'Content-Type': 'application/javascript; charset=utf-8',
           'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'public, max-age=0, s-maxage=60',
+          'Vary': 'Accept-Encoding'
         }
       });
     }
@@ -291,7 +373,8 @@ export async function onRequestGet(context) {
         headers: {
           'Content-Type': 'text/plain; charset=utf-8',
           'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'public, max-age=0, s-maxage=60',
+          'Vary': 'Accept-Encoding'
         }
       });
     }
@@ -303,7 +386,8 @@ export async function onRequestGet(context) {
         headers: {
           'Content-Type': 'application/javascript; charset=utf-8',
           'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'public, max-age=0, s-maxage=60',
+          'Vary': 'Accept-Encoding'
         }
       });
     }
