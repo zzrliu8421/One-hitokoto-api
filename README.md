@@ -1,16 +1,17 @@
-# 一言 API (Hitokoto API)
+# OneHitokoto-API
 
 基于 EdgeOne Pages 部署的一言API服务，使用 [hitokoto-osc/sentences-bundle](https://github.com/hitokoto-osc/sentences-bundle) 作为句子源。
 
 ## 功能特性
 
-- 🚀 基于 EdgeOne Pages Edge Functions，全球边缘节点部署，超低延迟
-- 🎲 随机获取一言，支持按分类筛选
-- 📦 支持多种返回格式：JSON、纯文本、JS变量、JSONP
-- 🔍 支持按句子长度过滤
-- 🏷️ 提供分类列表接口
-- 🌐 全CORS支持，跨域友好
-- ⚡ 边缘缓存加速 + 内存预加载
+- 基于 EdgeOne Pages Edge Functions，全球边缘节点部署，超低延迟
+- 随机获取一言，支持按分类筛选
+- 支持多种返回格式：JSON、纯文本、JS变量、JSONP
+- 支持按句子长度过滤
+- 提供分类列表接口
+- 全CORS支持，跨域友好
+- 边缘缓存加速 + 内存预加载
+- 多源镜像自动切换，数据获取更稳定
 
 ## 在线演示
 
@@ -30,7 +31,7 @@ GET /api
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| c | string | 否 | 句子分类，如 `a`(动画), `b`(漫画), `c`(游戏) 等。支持多选，如 `?c=a&c=c` |
+| c | string | 否 | 句子分类，如 `a`(动画), `b`(漫画), `c`(游戏) 等 |
 | encode | string | 否 | 返回格式：`json`(默认), `text`, `js` |
 | callback | string | 否 | JSONP 回调函数名 |
 | min_length | number | 否 | 最小句子长度（包含） |
@@ -65,7 +66,9 @@ GET /api
   "from_who": "一言",
   "creator": "DreamOne",
   "creator_uid": 9209,
-  "length": 22
+  "length": 22,
+  "category_name": "网络",
+  "category_desc": "Internet"
 }
 ```
 
@@ -86,15 +89,12 @@ curl https://hitokoto.api.sylv.top/api?callback=myCallback
 
 # 长度过滤
 curl "https://hitokoto.api.sylv.top/api?min_length=10&max_length=50"
-
-# 多分类选择
-curl "https://hitokoto.api.sylv.top/api?c=a&c=c"
 ```
 
 ### 获取分类列表
 
 ```
-GET /api/categories
+GET /api/categories.json
 ```
 
 #### 响应示例
@@ -145,14 +145,14 @@ edgeone deploy
 # 手动更新
 node scripts/fetch-sentences.js
 
-# 或使用 PowerShell 脚本
+# 或使用 PowerShell 脚本（Windows）
 .\scripts\update-sentences.ps1
 
-# 或使用 Bash 脚本
+# 或使用 Bash 脚本（Linux/macOS）
 ./scripts/update-sentences.sh
 ```
 
-项目已配置 GitHub Actions 自动更新工作流（`.github/workflows/update-sentences.yml`），每天自动从远程源获取最新数据。
+项目已配置 GitHub Actions 自动更新工作流（`.github/workflows/update-sentences.yml`），每天凌晨 3 点 (UTC) 自动从远程源获取最新数据。
 
 ## 技术栈
 
@@ -164,19 +164,21 @@ node scripts/fetch-sentences.js
 
 ```
 .
-├── data/                          # 句子 JSON 数据
+├── api/
+│   └── categories.json              # 分类列表静态数据
+├── data/                            # 句子 JSON 数据
+│   ├── a.json ~ l.json              # 各分类句子数据
+│   └── index.json                   # 数据索引（统计信息）
 ├── edge-functions/
-│   ├── index.js                   # 首页（API文档 + 演示）
-│   └── api/
-│       ├── index.js               # 一言API核心接口 (/api)
-│       ├── hitokoto.js            # 兼容旧接口 (/api/hitokoto)
-│       └── categories.js          # 分类列表接口
+│   └── api.js                       # 一言API核心接口 (/api)
 ├── scripts/
-│   ├── fetch-sentences.js         # 获取句子数据
-│   ├── update-sentences.ps1       # PowerShell 更新脚本
-│   └── update-sentences.sh        # Bash 更新脚本
+│   ├── fetch-sentences.js           # 获取句子数据（多源镜像）
+│   ├── update-sentences.ps1         # PowerShell 更新脚本
+│   └── update-sentences.sh          # Bash 更新脚本
 ├── .github/workflows/
-│   └── update-sentences.yml       # 自动更新工作流
+│   └── update-sentences.yml         # 自动更新工作流
+├── edgeone.json                     # EdgeOne Pages 配置（缓存、CORS）
+├── index.html                       # 首页（API文档 + 演示）
 ├── package.json
 └── README.md
 ```

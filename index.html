@@ -6,39 +6,45 @@
   <title>一言API - Hitokoto API Service</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; color: #333; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%); min-height: 100vh; color: #e2e8f0; }
     .container { max-width: 960px; margin: 0 auto; padding: 40px 20px; }
-    .header { text-align: center; color: white; margin-bottom: 40px; }
-    .header h1 { font-size: 3em; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
-    .header p { font-size: 1.2em; opacity: 0.9; }
-    .card { background: white; border-radius: 16px; padding: 30px; margin-bottom: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
-    .card h2 { color: #667eea; margin-bottom: 16px; font-size: 1.5em; }
-    .card h3 { color: #333; margin: 20px 0 12px; font-size: 1.15em; }
-    .card p { color: #666; line-height: 1.8; margin-bottom: 12px; }
-    .demo-box { background: #f8f9fa; border-radius: 12px; padding: 24px; margin: 20px 0; text-align: center; }
-    .demo-text { font-size: 1.3em; color: #333; margin-bottom: 12px; line-height: 1.6; min-height: 2em; }
-    .demo-source { color: #666; font-size: 0.95em; min-height: 1.5em; }
-    .refresh-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 32px; border-radius: 25px; font-size: 1em; cursor: pointer; margin-top: 16px; transition: all 0.3s ease; }
-    .refresh-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4); }
+    .header { text-align: center; color: #f8fafc; margin-bottom: 40px; }
+    .header h1 { font-size: 3em; margin-bottom: 10px; text-shadow: 0 4px 20px rgba(99, 102, 241, 0.35); font-weight: 700; letter-spacing: -0.02em; }
+    .header p { font-size: 1.2em; opacity: 0.75; color: #cbd5e1; }
+    .card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(148, 163, 184, 0.1); border-radius: 20px; padding: 32px; margin-bottom: 24px; box-shadow: 0 8px 32px rgba(2, 8, 20, 0.4); transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(2, 8, 20, 0.5); }
+    .card h2 { color: #818cf8; margin-bottom: 16px; font-size: 1.5em; font-weight: 600; }
+    .card h3 { color: #f1f5f9; margin: 20px 0 12px; font-size: 1.15em; font-weight: 600; }
+    .card p { color: #94a3b8; line-height: 1.8; margin-bottom: 12px; }
+    .demo-box { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(99, 102, 241, 0.15); border-radius: 16px; padding: 28px; margin: 20px 0; text-align: center; }
+    .demo-text { font-size: 1.35em; color: #f8fafc; margin-bottom: 12px; line-height: 1.6; min-height: 2em; font-weight: 500; }
+    .demo-source { color: #94a3b8; font-size: 0.95em; min-height: 1.5em; }
+    .refresh-btn { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); color: #f8fafc; border: none; padding: 12px 32px; border-radius: 25px; font-size: 1em; cursor: pointer; margin-top: 16px; transition: all 0.3s ease; font-weight: 500; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3); }
+    .refresh-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5); }
     .refresh-btn:active { transform: translateY(0); }
+    .refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
     .api-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.95em; }
-    .api-table th, .api-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
-    .api-table th { color: #667eea; font-weight: 600; background: #f8f9fa; }
-    .api-table code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-family: "Consolas", monospace; font-size: 0.9em; }
-    .endpoint { background: #2d3748; color: #68d391; padding: 14px 16px; border-radius: 8px; font-family: "Consolas", monospace; margin: 10px 0; overflow-x: auto; font-size: 0.95em; }
-    .endpoint .method { color: #f687b3; font-weight: bold; }
-    .json-example { background: #f8f9fa; padding: 16px; border-radius: 8px; font-family: "Consolas", monospace; font-size: 0.9em; overflow-x: auto; line-height: 1.6; color: #333; }
-    .json-example .key { color: #d73a49; }
-    .json-example .string { color: #032f62; }
-    .json-example .number { color: #005cc5; }
-    .footer { text-align: center; color: white; opacity: 0.8; margin-top: 40px; }
-    .footer a { color: white; text-decoration: underline; }
-    .tag { display: inline-block; background: #e9d8fd; color: #6b46c1; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; margin: 4px; }
-    .tag:hover { background: #d6bcfa; }
-    .status-ok { color: #48bb78; font-weight: bold; }
-    .status-error { color: #f56565; font-weight: bold; }
-    .notice { background: #fffaf0; border-left: 4px solid #ed8936; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; color: #744210; font-size: 0.95em; }
-    .notice a { color: #c05621; }
+    .api-table th, .api-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid rgba(148, 163, 184, 0.15); }
+    .api-table th { color: #818cf8; font-weight: 600; background: rgba(15, 23, 42, 0.5); }
+    .api-table td { color: #cbd5e1; }
+    .api-table tr:hover td { background: rgba(99, 102, 241, 0.05); }
+    .api-table code { background: rgba(15, 23, 42, 0.8); color: #c4b5fd; padding: 2px 6px; border-radius: 4px; font-family: "Consolas", monospace; font-size: 0.9em; border: 1px solid rgba(99, 102, 241, 0.2); }
+    .endpoint { background: #0f172a; color: #34d399; padding: 14px 16px; border-radius: 10px; font-family: "Consolas", monospace; margin: 10px 0; overflow-x: auto; font-size: 0.95em; border: 1px solid rgba(52, 211, 153, 0.15); }
+    .endpoint .method { color: #f472b6; font-weight: bold; }
+    .json-example { background: #0f172a; padding: 16px; border-radius: 10px; font-family: "Consolas", monospace; font-size: 0.9em; overflow-x: auto; line-height: 1.6; color: #e2e8f0; border: 1px solid rgba(99, 102, 241, 0.15); }
+    .json-example .key { color: #f472b6; }
+    .json-example .string { color: #34d399; }
+    .json-example .number { color: #60a5fa; }
+    .footer { text-align: center; color: #94a3b8; margin-top: 40px; }
+    .footer a { color: #818cf8; text-decoration: none; transition: color 0.2s; }
+    .footer a:hover { color: #a5b4fc; text-decoration: underline; }
+    .tag { display: inline-block; background: rgba(99, 102, 241, 0.15); color: #a5b4fc; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; margin: 4px; border: 1px solid rgba(99, 102, 241, 0.2); transition: all 0.2s; cursor: default; }
+    .tag:hover { background: rgba(99, 102, 241, 0.25); border-color: rgba(99, 102, 241, 0.4); transform: translateY(-1px); }
+    .status-ok { color: #34d399; font-weight: bold; }
+    .status-error { color: #f87171; font-weight: bold; }
+    .notice { background: rgba(251, 191, 36, 0.08); border-left: 4px solid #fbbf24; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; color: #fde68a; font-size: 0.95em; }
+    .notice a { color: #fcd34d; text-decoration: underline; }
+    .notice a:hover { color: #fbbf24; }
     @media (max-width: 600px) { .header h1 { font-size: 2em; } .card { padding: 20px; } .demo-text { font-size: 1.1em; } .api-table { font-size: 0.85em; } .api-table th, .api-table td { padding: 8px; } }
   </style>
 </head>
@@ -154,8 +160,9 @@
       </div>
     </div>
     <div class="footer">
-      <p>数据来源: <a href="https://github.com/hitokoto-osc/sentences-bundle" target="_blank">hitokoto-osc/sentences-bundle</a></p>
-      <p style="margin-top: 8px;">部署于 EdgeOne Pages | 参考文档: <a href="https://developer.hitokoto.cn/sentence/" target="_blank">developer.hitokoto.cn</a></p>
+      <p>数据来源: <a href="https://github.com/hitokoto-osc/sentences-bundle" target="_blank">hitokoto</a> | 参考文档: <a href="https://developer.hitokoto.cn/sentence/" target="_blank">developer.hitokoto.cn</a></p>
+      <p style="margin-top: 8px;">Powered by <a href="https://edgeone.ai" target="_blank">EdgeOne</a></p>
+      <p style="margin-top: 8px;"><a href="https://beian.miit.gov.cn/" target="_blank">豫ICP备2026013756号-1</a></p>
     </div>
   </div>
   <script>
@@ -164,68 +171,62 @@
       sourceEl: null,
       statusEl: null,
       btn: null,
-      queue: [],
-      currentIndex: 0,
+      currentData: null,
+      nextData: null,
       isDeleting: false,
       displayText: "",
       sourceText: "",
       typingSpeed: 80,
       deleteSpeed: 50,
-      pauseTime: 8000,
       timer: null,
-      isRunning: false,
+      state: "idle",
       init: function() {
         this.textEl = document.getElementById("hitokoto-text");
         this.sourceEl = document.getElementById("hitokoto-source");
         this.statusEl = document.getElementById("hitokoto-status");
         this.btn = document.getElementById("refresh-btn");
-        this.loadQueue();
+        this.loadData();
       },
-      loadQueue: async function() {
+      loadData: async function() {
         this.btn.disabled = true;
         try {
           var res = await fetch("/api?t=" + Date.now());
           if (!res.ok) throw new Error("HTTP " + res.status);
           var data = await res.json();
           if (data.code && data.code !== 200) throw new Error(data.message || "API Error");
-          this.queue.push(data);
-          if (!this.isRunning) {
-            this.isRunning = true;
+          if (this.state === "idle") {
+            this.currentData = data;
+            this.state = "typing";
             this.run();
+          } else {
+            this.nextData = data;
           }
-          this.preloadNext();
         } catch (err) {
           console.error("Fetch error:", err);
           this.textEl.textContent = "获取失败，请稍后重试";
           this.sourceEl.textContent = "";
           this.statusEl.innerHTML = "<span class='status-error'>✗</span> 错误: " + err.message;
           this.btn.disabled = false;
+          this.state = "idle";
         }
       },
-      preloadNext: async function() {
-        try {
-          var res = await fetch("/api?t=" + Date.now());
-          if (!res.ok) return;
-          var data = await res.json();
-          if (data.code && data.code !== 200) return;
-          this.queue.push(data);
-        } catch (e) {}
-      },
-      run: function() {
-        if (this.queue.length === 0) {
-          this.loadQueue();
-          return;
-        }
-        var data = this.queue[this.currentIndex];
-        var fullText = data.hitokoto || "";
+      getSourceText: function(data) {
         var fromText = data.from || "";
         var fromWhoText = data.from_who || "";
         var sourceParts = [];
         if (fromText) sourceParts.push(fromText);
         if (fromWhoText) sourceParts.push(fromWhoText);
-        var fullSource = sourceParts.length > 0 ? "—— " + sourceParts.join(" · ") : "";
-        this.statusEl.innerHTML = "<span class='status-ok'>✓</span> 分类: " + (data.category_name || data.type || "") + " | 长度: " + (data.length || 0) + "字";
-        if (!this.isDeleting) {
+        return sourceParts.length > 0 ? "—— " + sourceParts.join(" · ") : "";
+      },
+      run: function() {
+        if (!this.currentData) {
+          this.loadData();
+          return;
+        }
+        var fullText = this.currentData.hitokoto || "";
+        var fullSource = this.getSourceText(this.currentData);
+        this.statusEl.innerHTML = "<span class='status-ok'>✓</span> 分类: " + (this.currentData.category_name || this.currentData.type || "") + " | 长度: " + (this.currentData.length || 0) + "字";
+        if (this.state === "typing") {
           if (this.displayText.length < fullText.length) {
             this.displayText = fullText.substring(0, this.displayText.length + 1);
             this.textEl.textContent = this.displayText;
@@ -236,9 +237,10 @@
             this.sourceEl.textContent = this.sourceText;
             this.timer = setTimeout(function() { typewriter.run(); }, this.typingSpeed);
           } else {
-            this.timer = setTimeout(function() { typewriter.isDeleting = true; typewriter.run(); }, this.pauseTime);
+            this.state = "displaying";
+            this.btn.disabled = false;
           }
-        } else {
+        } else if (this.state === "deleting") {
           if (this.sourceText.length > 0) {
             this.sourceText = fullSource.substring(0, this.sourceText.length - 1);
             this.sourceEl.textContent = this.sourceText;
@@ -248,27 +250,24 @@
             this.textEl.textContent = this.displayText;
             this.timer = setTimeout(function() { typewriter.run(); }, this.deleteSpeed);
           } else {
-            this.isDeleting = false;
-            this.currentIndex++;
-            if (this.currentIndex >= this.queue.length) {
-              this.currentIndex = 0;
-              this.queue = [];
-              this.loadQueue();
-              return;
+            this.currentData = this.nextData;
+            this.nextData = null;
+            this.state = "typing";
+            if (!this.currentData) {
+              this.loadData();
+            } else {
+              this.run();
             }
-            this.run();
           }
         }
       },
       refresh: function() {
-        if (this.timer) clearTimeout(this.timer);
-        this.isDeleting = false;
-        this.displayText = "";
-        this.sourceText = "";
-        this.currentIndex = 0;
-        this.queue = [];
-        this.isRunning = false;
-        this.loadQueue();
+        if (this.state === "displaying") {
+          if (this.timer) clearTimeout(this.timer);
+          this.state = "deleting";
+          this.btn.disabled = true;
+          this.run();
+        }
       }
     };
     async function fetchHitokoto() {
