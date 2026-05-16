@@ -10,7 +10,106 @@
 - 🔍 支持按句子长度过滤
 - 🏷️ 提供分类列表接口
 - 🌐 全CORS支持，跨域友好
-- ⚡ 边缘缓存加速
+- ⚡ 边缘缓存加速 + 内存预加载
+
+## 在线演示
+
+**首页**: https://hitokoto.api.sylv.top/
+
+**API 接口**: https://hitokoto.api.sylv.top/api
+
+## API 文档
+
+### 获取随机一言
+
+```
+GET /api
+```
+
+#### 请求参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| c | string | 否 | 句子分类，如 `a`(动画), `b`(漫画), `c`(游戏) 等。支持多选，如 `?c=a&c=c` |
+| encode | string | 否 | 返回格式：`json`(默认), `text`, `js` |
+| callback | string | 否 | JSONP 回调函数名 |
+| min_length | number | 否 | 最小句子长度（包含） |
+| max_length | number | 否 | 最大句子长度（包含） |
+
+#### 句子分类
+
+| 分类码 | 名称 | 说明 |
+|--------|------|------|
+| a | 动画 | Anime |
+| b | 漫画 | Comic |
+| c | 游戏 | Game |
+| d | 文学 | Literature |
+| e | 原创 | Original |
+| f | 网络 | Internet |
+| g | 其他 | Other |
+| h | 影视 | Movie |
+| i | 诗词 | Poetry |
+| j | 网易云 | Netease |
+| k | 哲学 | Philosophy |
+| l | 抖机灵 | Wit |
+
+#### 响应示例 (JSON)
+
+```json
+{
+  "id": 7338,
+  "uuid": "75a45fd4-4f2f-45eb-80cb-6f0a7bcdfaf2",
+  "hitokoto": "用代码表达言语的魅力，用代码书写山河的壮丽。",
+  "type": "f",
+  "from": "一言开发者中心",
+  "from_who": "一言",
+  "creator": "DreamOne",
+  "creator_uid": 9209,
+  "length": 22
+}
+```
+
+#### 示例请求
+
+```bash
+# 获取随机一言（JSON格式）
+curl https://hitokoto.api.sylv.top/api
+
+# 获取动画类一言
+curl https://hitokoto.api.sylv.top/api?c=a
+
+# 获取纯文本格式
+curl https://hitokoto.api.sylv.top/api?encode=text
+
+# JSONP 回调
+curl https://hitokoto.api.sylv.top/api?callback=myCallback
+
+# 长度过滤
+curl "https://hitokoto.api.sylv.top/api?min_length=10&max_length=50"
+
+# 多分类选择
+curl "https://hitokoto.api.sylv.top/api?c=a&c=c"
+```
+
+### 获取分类列表
+
+```
+GET /api/categories
+```
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "data": [
+    { "key": "a", "name": "动画", "desc": "Anime" },
+    { "key": "b", "name": "漫画", "desc": "Comic" },
+    ...
+  ],
+  "count": 12
+}
+```
 
 ## 部署方式
 
@@ -38,97 +137,22 @@ edgeone deploy
 
 使用支持 MCP 的编辑器（如 Cursor、Trae），配置 Pages MCP Server 后直接部署。
 
-## API 文档
+## 数据更新
 
-### 获取随机一言
-
-```
-GET /api/hitokoto
-```
-
-#### 请求参数
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| c | string | 否 | 句子分类，如 `a`(动画), `b`(漫画), `c`(游戏) 等 |
-| encode | string | 否 | 返回格式：`json`(默认), `text`, `js` |
-| callback | string | 否 | JSONP 回调函数名 |
-| min_length | number | 否 | 最小句子长度 |
-| max_length | number | 否 | 最大句子长度 |
-
-#### 响应示例 (JSON)
-
-```json
-{
-  "id": 1,
-  "uuid": "9818ecda-9cbf-4f2a-9af8-8136ef39cfcd",
-  "hitokoto": "与众不同的生活方式很累人呢，因为找不到借口。",
-  "type": "a",
-  "from": "幸运星",
-  "from_who": null,
-  "creator": "跳舞的果果",
-  "creator_uid": 0,
-  "length": 22,
-  "category_name": "动画",
-  "category_desc": "Anime"
-}
-```
-
-#### 示例请求
+句子数据存储在 `data/` 目录下，可通过以下方式更新：
 
 ```bash
-# 获取随机一言（JSON格式）
-curl https://your-domain.com/api/hitokoto
+# 手动更新
+node scripts/fetch-sentences.js
 
-# 获取动画类一言
-curl https://your-domain.com/api/hitokoto?c=a
+# 或使用 PowerShell 脚本
+.\scripts\update-sentences.ps1
 
-# 获取纯文本格式
-curl https://your-domain.com/api/hitokoto?encode=text
-
-# JSONP 回调
-curl https://your-domain.com/api/hitokoto?callback=myCallback
-
-# 长度过滤
-curl https://your-domain.com/api/hitokoto?min_length=10&max_length=50
+# 或使用 Bash 脚本
+./scripts/update-sentences.sh
 ```
 
-### 获取分类列表
-
-```
-GET /api/categories
-```
-
-#### 响应示例
-
-```json
-{
-  "code": 200,
-  "data": [
-    { "key": "a", "name": "动画", "desc": "Anime" },
-    { "key": "b", "name": "漫画", "desc": "Comic" },
-    ...
-  ],
-  "count": 12
-}
-```
-
-## 句子分类
-
-| 分类码 | 名称 | 说明 |
-|--------|------|------|
-| a | 动画 | Anime |
-| b | 漫画 | Comic |
-| c | 游戏 | Game |
-| d | 文学 | Literature |
-| e | 原创 | Original |
-| f | 网络 | Internet |
-| g | 其他 | Other |
-| h | 影视 | Movie |
-| i | 诗词 | Poetry |
-| j | 网易云 | Netease |
-| k | 哲学 | Philosophy |
-| l | 抖机灵 | Wit |
+项目已配置 GitHub Actions 自动更新工作流（`.github/workflows/update-sentences.yml`），每天自动从远程源获取最新数据。
 
 ## 技术栈
 
@@ -140,14 +164,27 @@ GET /api/categories
 
 ```
 .
+├── data/                          # 句子 JSON 数据
 ├── edge-functions/
-│   ├── index.js          # 首页（API文档 + 演示）
+│   ├── index.js                   # 首页（API文档 + 演示）
 │   └── api/
-│       ├── hitokoto.js   # 一言API核心接口
-│       └── categories.js # 分类列表接口
+│       ├── index.js               # 一言API核心接口 (/api)
+│       ├── hitokoto.js            # 兼容旧接口 (/api/hitokoto)
+│       └── categories.js          # 分类列表接口
+├── scripts/
+│   ├── fetch-sentences.js         # 获取句子数据
+│   ├── update-sentences.ps1       # PowerShell 更新脚本
+│   └── update-sentences.sh        # Bash 更新脚本
+├── .github/workflows/
+│   └── update-sentences.yml       # 自动更新工作流
 ├── package.json
 └── README.md
 ```
+
+## 参考文档
+
+- [一言开发者文档](https://developer.hitokoto.cn/sentence/)
+- [EdgeOne Pages 文档](https://edgeone.ai/document/pages)
 
 ## 开源协议
 
