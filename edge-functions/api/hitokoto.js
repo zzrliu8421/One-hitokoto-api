@@ -100,8 +100,9 @@ const memoryCache = new Map();
  */
 async function fetchLocalSentences(category) {
   try {
-    // 通过 fetch 读取同域名下的静态 JSON 文件
-    var url = '/data/' + category + '.json';
+    // 使用绝对 URL 读取同域名下的静态 JSON 文件
+    // EdgeOne Pages Edge Functions 中 fetch 相对路径可能无法正确解析
+    var url = 'https://hitokoto.api.sylv.top/data/' + category + '.json';
     var response = await fetch(url);
 
     if (!response.ok) {
