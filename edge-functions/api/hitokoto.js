@@ -1,7 +1,7 @@
 // 一言API核心实现
-// 数据来源: https://github.com/hitokoto-osc/sentences-bundle
+// 数据来源: 本地 sentences-data.js 模块（构建时预加载）
 
-import { getFallbackSentences } from './fallback-sentences.js';
+import { SENTENCES_DATA, getSentencesByCategory } from './sentences-data.js';
 
 // 句子类型映射
 const CATEGORY_MAP = {
@@ -19,7 +19,7 @@ const CATEGORY_MAP = {
   l: { name: '抖机灵', desc: 'Wit' }
 };
 
-// 多个镜像源，按优先级排列
+// 远程镜像源（作为本地数据的补充/更新来源）
 const MIRROR_SOURCES = [
   'https://raw.githubusercontent.com/hitokoto-osc/sentences-bundle/master/sentences',
   'https://raw.kkgithub.com/hitokoto-osc/sentences-bundle/master/sentences',
@@ -31,6 +31,19 @@ const MIRROR_SOURCES = [
 const CACHE_TTL = 3600;
 const FETCH_TIMEOUT = 5000;
 const MAX_RETRIES = 2;
+
+// 内存缓存
+const memoryCache = new Map();
+
+/**
+ * 从本地模块获取句子
+ * @param {string} category - 句子类型
+ * @returns {Array} 句子数组
+ */
+function getLocalSentences(category) {
+  const sentences = getSentencesByCategory(category);
+  return sentences.length > 0 ? sentences : [];
+}
 
 /**
  * 带超时的fetch
@@ -57,7 +70,7 @@ async function fetchWithTimeout(url, options = {}, timeout = FETCH_TIMEOUT) {
 }
 
 /**
- * 从单个源获取句子数据
+ * 从远程源获取句子数据
  * @param {string} category - 句子类型
  * @param {string} baseUrl - 源基础URL
  * @returns {Promise<Array>} 句子数组
@@ -81,11 +94,11 @@ async function fetchFromSource(category, baseUrl) {
 }
 
 /**
- * 获取句子数据（多源重试）
+ * 从远程获取句子数据（多源重试）
  * @param {string} category - 句子类型
  * @returns {Promise<Array>} 句子数组
  */
-async function fetchSentences(category) {
+async function fetchRemoteSentences(category) {
   const errors = [];
 
   for (const baseUrl of MIRROR_SOURCES) {
@@ -107,49 +120,59 @@ async function fetchSentences(category) {
     }
   }
 
-  console.error(`All sources failed for category ${category}:`, errors);
-  console.log(`Using fallback sentences for category ${category}`);
-  return getFallbackSentences(category);
+  console.error(`All remote sources failed for category ${category}:`, errors);
+  return [];
 }
 
 /**
- * 从缓存获取或加载句子
+ * 获取句子（本地优先，远程兜底）
  * @param {string} category - 句子类型
- * @param {Cache} cache - Edge Cache对象
  * @returns {Promise<Array>} 句子数组
  */
-async function getSentencesWithCache(category, cache) {
-  const cacheKey = `https://hitokoto-api.internal/sentences/${category}`;
+async function getSentences(category) {
+  const cacheKey = `sentences_${category}`;
 
+  // 1. 尝试从内存缓存获取
+  if (memoryCache.has(cacheKey)) {
+    return memoryCache.get(cacheKey);
+  }
+
+  // 2. 尝试从 Edge Cache 获取
   try {
-    const cached = await cache.match(cacheKey);
+    const cache = caches.default;
+    const cached = await cache.match(`https://hitokoto-api.internal/${cacheKey}`);
     if (cached) {
-      try {
-        const data = await cached.json();
-        if (Array.isArray(data) && data.length > 0) {
-          return data;
-        }
-      } catch {
-        // 缓存解析失败，继续获取新数据
+      const data = await cached.json();
+      if (Array.isArray(data) && data.length > 0) {
+        memoryCache.set(cacheKey, data);
+        return data;
       }
     }
   } catch {
-    // 缓存读取失败，继续获取新数据
+    // 缓存读取失败，继续
   }
 
-  // 获取新数据
-  const sentences = await fetchSentences(category);
+  // 3. 从本地模块获取（主要数据来源）
+  let sentences = getLocalSentences(category);
 
-  // 存入缓存
+  // 4. 如果本地数据为空，尝试从远程获取
+  if (sentences.length === 0) {
+    console.log(`Local data empty for ${category}, trying remote...`);
+    sentences = await fetchRemoteSentences(category);
+  }
+
+  // 5. 存入缓存
   if (sentences.length > 0) {
+    memoryCache.set(cacheKey, sentences);
     try {
+      const cache = caches.default;
       const response = new Response(JSON.stringify(sentences), {
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': `max-age=${CACHE_TTL}`
         }
       });
-      await cache.put(cacheKey, response);
+      await cache.put(`https://hitokoto-api.internal/${cacheKey}`, response);
     } catch {
       // 缓存写入失败，不影响主流程
     }
@@ -249,28 +272,16 @@ export async function onRequestGet(context) {
   const minLength = parseInt(url.searchParams.get('min_length') || '0', 10);
   const maxLength = parseInt(url.searchParams.get('max_length') || '0', 10);
 
-  // 获取Edge Cache（带降级处理）
-  let cache = null;
-  try {
-    cache = caches.default;
-  } catch {
-    // 缓存不可用，继续无缓存模式
-  }
-
   let sentences = [];
 
   // 如果指定了类型，获取对应类型句子
   if (category && CATEGORY_MAP[category]) {
-    sentences = cache
-      ? await getSentencesWithCache(category, cache)
-      : await fetchSentences(category);
+    sentences = await getSentences(category);
   } else {
     // 随机选择一个类型
     const categories = Object.keys(CATEGORY_MAP);
     const selectedCategory = categories[Math.floor(Math.random() * categories.length)];
-    sentences = cache
-      ? await getSentencesWithCache(selectedCategory, cache)
-      : await fetchSentences(selectedCategory);
+    sentences = await getSentences(selectedCategory);
   }
 
   // 根据长度过滤
