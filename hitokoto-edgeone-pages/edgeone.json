@@ -1,5 +1,5 @@
 {
-  "buildCommand": "node scripts/fetch-sentences.cjs",
+  "buildCommand": "node scripts/fetch-sentences.js",
   "outputDirectory": "public",
   "nodeVersion": "20.18.0"
 }

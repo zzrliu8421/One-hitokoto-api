@@ -4,7 +4,7 @@
   "description": "Hitokoto API 部署在 EdgeOne Pages 平台",
   "type": "module",
   "scripts": {
-    "build": "node scripts/fetch-sentences.cjs"
+    "build": "node scripts/fetch-sentences.js"
   },
   "devDependencies": {}
 }
