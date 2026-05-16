@@ -1,4 +1,4 @@
-import sentences from '../_data/sentences.js';
+import sentences from '../../_data/sentences.js';
 
 const ALLOWED_ENCODE = new Set(['json', 'js', 'text']);
 const MIME = {

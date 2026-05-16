@@ -16,7 +16,7 @@ async function fetchJSON(url) {
 
 async function main() {
   const projectRoot = path.resolve(__dirname, '..');
-  const outputDir = path.join(projectRoot, 'functions', '_data');
+  const outputDir = path.join(projectRoot, 'edge-functions', '_data');
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
