@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "echo 'Use edgeone CLI directly: edgeone dev'",
     "deploy": "echo 'Use edgeone CLI directly: edgeone deploy'",
-    "update-sentences": "node scripts/fetch-sentences.js && node scripts/build-data-module.js"
+    "update-sentences": "node scripts/fetch-sentences.js"
   },
   "keywords": [
     "hitokoto",
