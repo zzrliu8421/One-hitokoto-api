@@ -21,49 +21,25 @@ const CATEGORIES = [
   { key: 'l', name: '抖机灵' }
 ];
 
-const CDN_BASE_URL = 'https://cdn.jsdelivr.net/gh/hitokoto-osc/sentences-bundle@latest';
-
-let cachedSentences = null;
-let cacheTimestamp = 0;
-const CACHE_TTL = 5 * 60 * 1000;
-
-async function fetchWithTimeout(url, timeoutMs) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw error;
-  }
-}
+let allSentences = null;
 
 async function loadAllSentences() {
-  const now = Date.now();
-  if (cachedSentences && (now - cacheTimestamp) < CACHE_TTL) {
-    return cachedSentences;
+  if (allSentences !== null) {
+    return allSentences;
   }
 
-  const allSentences = [];
-  
+  const sentences = [];
+
   for (const category of CATEGORIES) {
     try {
-      const response = await fetchWithTimeout(
-        `${CDN_BASE_URL}/sentences/${category.key}.json`,
-        3000
-      );
-      
+      const response = await fetch(`https://cdn.jsdelivr.net/gh/hitokoto-osc/sentences-bundle@latest/sentences/${category.key}.json`);
       if (!response.ok) continue;
-      
+
       const data = await response.json();
-      
       if (Array.isArray(data)) {
         for (const item of data) {
           if (item && (item.hitokoto || item.content)) {
-            allSentences.push({
+            sentences.push({
               id: item.uuid || uuidv4(),
               hitokoto: item.hitokoto || item.content,
               type: item.type || category.key,
@@ -83,10 +59,8 @@ async function loadAllSentences() {
     }
   }
 
-  cachedSentences = allSentences;
-  cacheTimestamp = now;
-  
-  return allSentences;
+  allSentences = sentences;
+  return sentences;
 }
 
 function getRandomSentence(sentences, categories, minLength, maxLength) {
@@ -99,36 +73,36 @@ function getRandomSentence(sentences, categories, minLength, maxLength) {
   });
 
   if (filtered.length === 0) return null;
-  
+
   return filtered[Math.floor(Math.random() * filtered.length)];
 }
 
 function parseQueryParams(url) {
   const params = new URLSearchParams(url.search);
-  
+
   let categories = params.get('c') ? params.get('c').split('') : [];
   let encode = params.get('encode') || 'json';
   let minLength = parseInt(params.get('min_length') || '0', 10);
   let maxLength = parseInt(params.get('max_length') || '10000', 10);
   let charset = params.get('charset') || 'utf-8';
   let callback = params.get('callback') || '';
-  
+
   if (isNaN(minLength)) minLength = 0;
   if (isNaN(maxLength)) maxLength = 10000;
-  
+
   if (maxLength < minLength) {
     const tmp = minLength;
     minLength = maxLength;
     maxLength = tmp;
   }
-  
+
   return { categories, encode, minLength, maxLength, charset, callback };
 }
 
 function createResponse(data, encode, callback, charset) {
   let body;
   let contentType;
-  
+
   switch (encode) {
     case 'text':
       body = data.hitokoto;
@@ -144,7 +118,7 @@ function createResponse(data, encode, callback, charset) {
       contentType = `application/json; charset=${charset}`;
       break;
   }
-  
+
   return new Response(body, {
     headers: {
       'Content-Type': contentType,
@@ -176,7 +150,7 @@ export default async function onRequest(context) {
   try {
     const request = context.request;
     const url = new URL(request.url);
-    
+
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
@@ -188,11 +162,11 @@ export default async function onRequest(context) {
         }
       });
     }
-    
+
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return createErrorResponse(405, 'Method Not Allowed');
     }
-    
+
     if (url.pathname === '/ping') {
       return new Response(JSON.stringify({
         status: 200,
@@ -206,7 +180,7 @@ export default async function onRequest(context) {
         }
       });
     }
-    
+
     if (url.pathname === '/status') {
       return new Response(JSON.stringify({
         name: 'hitokoto-api',
@@ -227,28 +201,27 @@ export default async function onRequest(context) {
         }
       });
     }
-    
+
     const params = parseQueryParams(url);
-    
     const sentences = await loadAllSentences();
-    
+
     if (sentences.length === 0) {
       return createErrorResponse(503, 'Service temporarily unavailable');
     }
-    
+
     const sentence = getRandomSentence(
       sentences,
       params.categories,
       params.minLength,
       params.maxLength
     );
-    
+
     if (!sentence) {
       return createErrorResponse(404, 'No matching sentences found');
     }
-    
+
     return createResponse(sentence, params.encode, params.callback, params.charset);
-    
+
   } catch (error) {
     console.error('Edge Function Error:', error);
     return createErrorResponse(500, 'Internal Server Error: ' + error.message);
