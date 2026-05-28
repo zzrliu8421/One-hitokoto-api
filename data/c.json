@@ -2974,7 +2974,7 @@
     "type": "c",
     "from": "Minecraft",
     "from_who": "终末之诗",
-    "creator": "希���石",
+    "creator": "希铁石",
     "creator_uid": 5496,
     "reviewer": 1044,
     "commit_from": "web",
@@ -5868,7 +5868,7 @@
   {
     "id": 8067,
     "uuid": "25a6c51d-c397-4c41-9ecc-92884131cc1b",
-    "hitokoto": "来吧，南���三！",
+    "hitokoto": "来吧，南无三！",
     "type": "c",
     "from": "东方project",
     "from_who": "白莲",
@@ -8220,7 +8220,7 @@
   {
     "id": 9138,
     "uuid": "b50d26c5-b7bc-4753-abaa-54a1cb78bcaa",
-    "hitokoto": "人们只因未知而感到恐惧，可一旦人们面对未知，就会变得���所畏惧。",
+    "hitokoto": "人们只因未知而感到恐惧，可一旦人们面对未知，就会变得无所畏惧。",
     "type": "c",
     "from": "Counter-Strike:Global Offensive",
     "from_who": "安东尼·德·圣-埃克苏佩里",
@@ -9410,7 +9410,7 @@
   {
     "id": 9736,
     "uuid": "69690482-1f94-4d40-80ae-2daf711e3075",
-    "hitokoto": "一群白鸽飞过红色瓦片的屋顶，烟囱上升起黑烟。地面上是一片宽阔平坦、修剪精致、嫩绿的草坪，还有灰色的天空，安静祥��……",
+    "hitokoto": "一群白鸽飞过红色瓦片的屋顶，烟囱上升起黑烟。地面上是一片宽阔平坦、修剪精致、嫩绿的草坪，还有灰色的天空，安静祥和……",
     "type": "c",
     "from": "崩坏3",
     "from_who": null,
@@ -11734,7 +11734,7 @@
   {
     "id": 10498,
     "uuid": "0f110f5b-60ce-4fa1-bfc1-8a01c4396edf",
-    "hitokoto": "メ���カタカラメヤサイダブルニンニクアブラマシマシ！",
+    "hitokoto": "メンカタカラメヤサイダブルニンニクアブラマシマシ！",
     "type": "c",
     "from": "魔女的夜宴",
     "from_who": "绫地宁宁",
@@ -14040,5 +14040,19 @@
     "commit_from": "web",
     "created_at": "1779714637",
     "length": 12
+  },
+  {
+    "id": 11331,
+    "uuid": "51290e53-c630-45e8-9a7a-86d0a9c252f9",
+    "hitokoto": "协议三.",
+    "type": "c",
+    "from": "泰坦陨落2",
+    "from_who": null,
+    "creator": "QAQA",
+    "creator_uid": 20724,
+    "reviewer": 20537,
+    "commit_from": "web",
+    "created_at": "1779867720",
+    "length": 4
   }
 ]
