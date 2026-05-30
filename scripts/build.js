@@ -163,7 +163,11 @@ function textResponse(text, contentType) {
 async function handleRequest(request) {
   try {
     var url = new URL(request.url);
-    var pathname = url.pathname;
+    var pathname = url.pathname.replace(/\\/+$/, '');
+
+    if (pathname !== '/api' && pathname !== '/api/categories') {
+      return jsonResponse({ code: 404, message: 'Not found' }, 404);
+    }
 
     if (pathname === '/api/categories') {
       return jsonResponse({
