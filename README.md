@@ -1,10 +1,9 @@
 # OneHitokoto-API
 
-基于 EdgeOne Pages 部署的一言API服务，使用 [hitokoto-osc/sentences-bundle](https://github.com/hitokoto-osc/sentences-bundle) 作为句子源。
+支持多平台部署的一言API服务，使用 [hitokoto-osc/sentences-bundle](https://github.com/hitokoto-osc/sentences-bundle) 作为句子源。
 
 ## 功能特性
 
-- 基于 EdgeOne Pages Edge Functions，全球边缘节点部署，超低延迟
 - 随机获取一言，支持按分类筛选
 - 支持多种返回格式：JSON、纯文本、JS变量、JSONP
 - 支持按句子长度过滤
@@ -12,6 +11,7 @@
 - 全CORS支持，跨域友好
 - 边缘缓存加速 + 内存预加载
 - 多源镜像自动切换，数据获取更稳定
+- 支持多平台部署：EdgeOne Pages、阿里云 ESA
 
 ## 在线演示
 
@@ -113,7 +113,13 @@ GET /api/categories.json
 
 ## 部署方式
 
-### 1. 通过 EdgeOne CLI 部署
+本项目支持两种平台部署，请根据需求选择：
+
+### 平台一：EdgeOne Pages（腾讯云）
+
+基于 EdgeOne Pages Edge Functions 部署，全球边缘节点，超低延迟。
+
+#### 1. 通过 EdgeOne CLI 部署
 
 ```bash
 # 安装 CLI
@@ -126,16 +132,58 @@ edgeone login
 edgeone deploy
 ```
 
-### 2. 通过 Git 导入部署
+#### 2. 通过 Git 导入部署
 
 1. Fork 本仓库
 2. 登录 [EdgeOne Pages 控制台](https://console.tencentcloud.com/edgeone/pages)
 3. 选择「导入 Git 仓库」，授权并选择本仓库
 4. 点击部署，等待构建完成
 
-### 3. 通过 Pages MCP 部署
+#### 3. 通过 Pages MCP 部署
 
 使用支持 MCP 的编辑器（如 Cursor、Trae），配置 Pages MCP Server 后直接部署。
+
+### 平台二：阿里云 ESA
+
+基于阿里云 ESA（Edge Security Acceleration）函数和 Pages 部署。
+
+#### 1. 环境准备
+
+- 注册并登录 [阿里云 ESA 控制台](https://www.aliyun.com/product/esa)
+- 确保已开通 ESA 服务并创建站点
+
+#### 2. 配置部署
+
+项目已包含 `esa.jsonc` 配置文件：
+
+```json
+{
+  "name": "hitokoto-api",
+  "entry": "./build/api.js",
+  "installCommand": "",
+  "buildCommand": "node scripts/build.js",
+  "assets": {
+    "directory": "./dist",
+    "notFoundStrategy": "404Page"
+  }
+}
+```
+
+#### 3. 构建与部署
+
+```bash
+# 安装依赖
+npm install
+
+# 构建项目（打包函数 + 静态资源）
+npm run build
+
+# 使用 ESA CLI 或控制台上传部署
+```
+
+构建脚本会将句子数据内联到函数中，生成 `build/api.js`，同时将静态资源输出到 `dist/` 目录。
+
+> **注意**：函数包大小限制为 4MB，构建时会自动检查。
 
 ## 数据更新
 
@@ -156,7 +204,8 @@ node scripts/fetch-sentences.js
 
 ## 技术栈
 
-- [EdgeOne Pages](https://edgeone.ai/pages) - 边缘计算平台
+- [EdgeOne Pages](https://edgeone.ai/pages) - 腾讯云边缘计算平台
+- [阿里云 ESA](https://www.aliyun.com/product/esa) - 阿里云边缘安全加速
 - [Edge Functions](https://edgeone.ai/document/edge-functions) - 边缘函数
 - [hitokoto-osc/sentences-bundle](https://github.com/hitokoto-osc/sentences-bundle) - 句子数据源
 
@@ -172,21 +221,31 @@ node scripts/fetch-sentences.js
 ├── edge-functions/
 │   └── api.js                       # 一言API核心接口 (/api)
 ├── scripts/
+│   ├── build.js                     # 构建脚本（打包函数 + 静态资源）
 │   ├── fetch-sentences.js           # 获取句子数据（多源镜像）
 │   ├── update-sentences.ps1         # PowerShell 更新脚本
 │   └── update-sentences.sh          # Bash 更新脚本
 ├── .github/workflows/
 │   └── update-sentences.yml         # 自动更新工作流
 ├── edgeone.json                     # EdgeOne Pages 配置（缓存、CORS）
+├── esa.jsonc                        # 阿里云 ESA 部署配置
 ├── index.html                       # 首页（API文档 + 演示）
 ├── package.json
 └── README.md
 ```
 
+## 分支说明
+
+- `main`：主分支，默认针对 EdgeOne Pages 优化
+- `aliyun-esa`：阿里云 ESA 适配分支，包含 ESA 专属配置和构建脚本
+
+两个分支的 API 功能完全一致，仅部署平台和配置文件不同。
+
 ## 参考文档
 
 - [一言开发者文档](https://developer.hitokoto.cn/sentence/)
 - [EdgeOne Pages 文档](https://edgeone.ai/document/pages)
+- [阿里云 ESA 文档](https://help.aliyun.com/product/62684.html)
 
 ## 开源协议
 
