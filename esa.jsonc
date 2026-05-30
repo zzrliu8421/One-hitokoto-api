@@ -1,6 +1,6 @@
 {
   "name": "hitokoto-api",
-  "entry": "./build/api.js",
+  "entry": "./edge-functions/api.js",
   "installCommand": "",
   "buildCommand": "node scripts/build.js",
   "assets": {

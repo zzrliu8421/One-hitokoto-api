@@ -1,5 +1,3 @@
-var SENTENCES_DATA = {};
-
 var CATEGORY_MAP = {
   a: { name: '动画', desc: 'Anime' },
   b: { name: '漫画', desc: 'Comic' },
@@ -17,9 +15,54 @@ var CATEGORY_MAP = {
 
 var ALL_CATEGORIES = Object.keys(CATEGORY_MAP);
 
-function getSentences(category) {
-  var data = SENTENCES_DATA[category];
-  return Array.isArray(data) ? data : [];
+var memoryCache = new Map();
+var CACHE_TTL = 86400000;
+
+function getCacheKey(category) {
+  return 'data_' + category;
+}
+
+function getFromCache(category) {
+  var cached = memoryCache.get(getCacheKey(category));
+  if (cached && (Date.now() - cached.ts < CACHE_TTL)) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCache(category, data) {
+  memoryCache.set(getCacheKey(category), { data: data, ts: Date.now() });
+}
+
+async function fetchCategoryData(request, category) {
+  var cached = getFromCache(category);
+  if (cached) return cached;
+
+  try {
+    var url = new URL(request.url);
+    var dataUrl = url.origin + '/data/' + category + '.json';
+
+    var controller = new AbortController();
+    var tid = setTimeout(function() { controller.abort(); }, 5000);
+
+    var resp = await fetch(dataUrl, { signal: controller.signal });
+    clearTimeout(tid);
+
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+    var data = await resp.json();
+    var sentences = Array.isArray(data) ? data : [];
+
+    if (sentences.length > 0) {
+      setCache(category, sentences);
+    }
+    return sentences;
+  } catch (e) {
+    console.error('Fetch ' + category + ' failed: ' + (e.message || e));
+    var stale = memoryCache.get(getCacheKey(category));
+    if (stale) return stale.data;
+    return [];
+  }
 }
 
 function getRandomSentence(sentences) {
@@ -32,7 +75,7 @@ function buildResponse(sentence, format) {
     return { code: 404, message: 'No sentences found' };
   }
 
-  var categoryInfo = CATEGORY_MAP[sentence.type] || { name: '未知', desc: 'Unknown' };
+  var ci = CATEGORY_MAP[sentence.type] || { name: '未知', desc: 'Unknown' };
 
   var result = {
     id: sentence.id,
@@ -44,8 +87,8 @@ function buildResponse(sentence, format) {
     creator: sentence.creator,
     creator_uid: sentence.creator_uid,
     length: sentence.length,
-    category_name: categoryInfo.name,
-    category_desc: categoryInfo.desc
+    category_name: ci.name,
+    category_desc: ci.desc
   };
 
   if (format === 'text') {
@@ -54,7 +97,7 @@ function buildResponse(sentence, format) {
 
   if (format === 'js') {
     return {
-      js: 'hitokoto="' + sentence.hitokoto.replace(/"/g, '\\"') + '"'
+      js: 'hitokoto="' + sentence.hitokoto.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'
     };
   }
 
@@ -116,10 +159,10 @@ async function handleRequest(request) {
     var sentences = [];
 
     if (category && CATEGORY_MAP[category]) {
-      sentences = getSentences(category);
+      sentences = await fetchCategoryData(request, category);
     } else {
       var selectedCategory = ALL_CATEGORIES[Math.floor(Math.random() * ALL_CATEGORIES.length)];
-      sentences = getSentences(selectedCategory);
+      sentences = await fetchCategoryData(request, selectedCategory);
     }
 
     if (minLength > 0) {
