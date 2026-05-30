@@ -1,0 +1,10 @@
+{
+  "name": "hitokoto-api",
+  "entry": "./edge-functions/api.js",
+  "installCommand": "",
+  "buildCommand": "node scripts/build.js",
+  "assets": {
+    "directory": "./dist",
+    "notFoundStrategy": "404Page"
+  }
+}

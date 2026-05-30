@@ -1,17 +1,17 @@
 {
   "name": "hitokoto-api",
   "version": "1.0.0",
-  "description": "一言API服务 - 基于 EdgeOne Pages 部署",
-  "main": "index.js",
+  "description": "一言API服务 - 基于阿里云 ESA 函数和 Pages 部署",
+  "main": "edge-functions/api.js",
   "scripts": {
-    "dev": "echo 'Use edgeone CLI directly: edgeone dev'",
-    "deploy": "echo 'Use edgeone CLI directly: edgeone deploy'",
+    "build": "node scripts/build.js",
     "update-sentences": "node scripts/fetch-sentences.js"
   },
   "keywords": [
     "hitokoto",
     "api",
-    "edgeone",
+    "esa",
+    "alibaba-cloud",
     "pages"
   ],
   "author": "",
