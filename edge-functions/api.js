@@ -15,55 +15,74 @@ const CATEGORY_MAP = {
 
 const ALL_CATEGORIES = Object.keys(CATEGORY_MAP);
 
+const MIRROR_SOURCES = [
+  'https://raw.githubusercontent.com/hitokoto-osc/sentences-bundle/master/sentences',
+  'https://raw.kkgithub.com/hitokoto-osc/sentences-bundle/master/sentences',
+  'https://ghproxy.net/https://raw.githubusercontent.com/hitokoto-osc/sentences-bundle/master/sentences'
+];
+
 const memoryCache = new Map();
 
 const CACHE_TTL = 86400000;
 
-const FETCH_TIMEOUT = 5000;
+const FETCH_TIMEOUT = 8000;
 
-async function fetchCategoryData(request, category) {
+async function fetchWithTimeout(url, timeout) {
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() {
+    controller.abort();
+  }, timeout);
+
+  try {
+    var response = await fetch(url, {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (e) {
+    clearTimeout(timeoutId);
+    throw e;
+  }
+}
+
+async function fetchCategoryData(category) {
   var cacheKey = 'data_' + category;
   var cached = memoryCache.get(cacheKey);
   if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
     return cached.data;
   }
 
-  try {
-    var url = new URL(request.url);
-    var dataUrl = url.origin + '/data/' + category + '.json';
+  for (var i = 0; i < MIRROR_SOURCES.length; i++) {
+    var baseUrl = MIRROR_SOURCES[i];
+    var url = baseUrl + '/' + category + '.json';
 
-    var controller = new AbortController();
-    var timeoutId = setTimeout(function() {
-      controller.abort();
-    }, FETCH_TIMEOUT);
+    try {
+      var response = await fetchWithTimeout(url, FETCH_TIMEOUT);
 
-    var response = await fetch(dataUrl, {
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
+      if (!response.ok) {
+        continue;
+      }
 
-    if (!response.ok) {
-      throw new Error('HTTP ' + response.status);
+      var data = await response.json();
+      var sentences = Array.isArray(data) ? data : [];
+
+      if (sentences.length > 0) {
+        memoryCache.set(cacheKey, {
+          data: sentences,
+          timestamp: Date.now()
+        });
+        return sentences;
+      }
+    } catch (e) {
+      console.error('Mirror ' + (i + 1) + ' failed for ' + category + ': ' + (e.message || e));
     }
-
-    var data = await response.json();
-    var sentences = Array.isArray(data) ? data : [];
-
-    if (sentences.length > 0) {
-      memoryCache.set(cacheKey, {
-        data: sentences,
-        timestamp: Date.now()
-      });
-    }
-
-    return sentences;
-  } catch (e) {
-    console.error('Error fetching category ' + category + ':', e.message || e);
-    if (cached) {
-      return cached.data;
-    }
-    return [];
   }
+
+  if (cached) {
+    return cached.data;
+  }
+
+  return [];
 }
 
 function getRandomSentence(sentences) {
@@ -157,10 +176,10 @@ async function handleRequest(request) {
     var sentences = [];
 
     if (category && CATEGORY_MAP[category]) {
-      sentences = await fetchCategoryData(request, category);
+      sentences = await fetchCategoryData(category);
     } else {
       var selectedCategory = ALL_CATEGORIES[Math.floor(Math.random() * ALL_CATEGORIES.length)];
-      sentences = await fetchCategoryData(request, selectedCategory);
+      sentences = await fetchCategoryData(selectedCategory);
     }
 
     if (minLength > 0) {
