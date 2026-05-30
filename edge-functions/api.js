@@ -1,4 +1,6 @@
-const CATEGORY_MAP = {
+var SENTENCES_DATA = {};
+
+var CATEGORY_MAP = {
   a: { name: '动画', desc: 'Anime' },
   b: { name: '漫画', desc: 'Comic' },
   c: { name: '游戏', desc: 'Game' },
@@ -13,95 +15,26 @@ const CATEGORY_MAP = {
   l: { name: '抖机灵', desc: 'Wit' }
 };
 
-const ALL_CATEGORIES = Object.keys(CATEGORY_MAP);
+var ALL_CATEGORIES = Object.keys(CATEGORY_MAP);
 
-const MIRROR_SOURCES = [
-  'https://raw.githubusercontent.com/hitokoto-osc/sentences-bundle/master/sentences',
-  'https://raw.kkgithub.com/hitokoto-osc/sentences-bundle/master/sentences',
-  'https://ghproxy.net/https://raw.githubusercontent.com/hitokoto-osc/sentences-bundle/master/sentences'
-];
-
-const memoryCache = new Map();
-
-const CACHE_TTL = 86400000;
-
-const FETCH_TIMEOUT = 8000;
-
-async function fetchWithTimeout(url, timeout) {
-  var controller = new AbortController();
-  var timeoutId = setTimeout(function() {
-    controller.abort();
-  }, timeout);
-
-  try {
-    var response = await fetch(url, {
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (e) {
-    clearTimeout(timeoutId);
-    throw e;
-  }
-}
-
-async function fetchCategoryData(category) {
-  var cacheKey = 'data_' + category;
-  var cached = memoryCache.get(cacheKey);
-  if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
-    return cached.data;
-  }
-
-  for (var i = 0; i < MIRROR_SOURCES.length; i++) {
-    var baseUrl = MIRROR_SOURCES[i];
-    var url = baseUrl + '/' + category + '.json';
-
-    try {
-      var response = await fetchWithTimeout(url, FETCH_TIMEOUT);
-
-      if (!response.ok) {
-        continue;
-      }
-
-      var data = await response.json();
-      var sentences = Array.isArray(data) ? data : [];
-
-      if (sentences.length > 0) {
-        memoryCache.set(cacheKey, {
-          data: sentences,
-          timestamp: Date.now()
-        });
-        return sentences;
-      }
-    } catch (e) {
-      console.error('Mirror ' + (i + 1) + ' failed for ' + category + ': ' + (e.message || e));
-    }
-  }
-
-  if (cached) {
-    return cached.data;
-  }
-
-  return [];
+function getSentences(category) {
+  var data = SENTENCES_DATA[category];
+  return Array.isArray(data) ? data : [];
 }
 
 function getRandomSentence(sentences) {
   if (!sentences || sentences.length === 0) return null;
-  var index = Math.floor(Math.random() * sentences.length);
-  return sentences[index];
+  return sentences[Math.floor(Math.random() * sentences.length)];
 }
 
 function buildResponse(sentence, format) {
   if (!sentence) {
-    return {
-      code: 404,
-      message: 'No sentences found'
-    };
+    return { code: 404, message: 'No sentences found' };
   }
 
   var categoryInfo = CATEGORY_MAP[sentence.type] || { name: '未知', desc: 'Unknown' };
 
-  var baseResponse = {
+  var result = {
     id: sentence.id,
     uuid: sentence.uuid,
     hitokoto: sentence.hitokoto,
@@ -125,40 +58,43 @@ function buildResponse(sentence, format) {
     };
   }
 
-  return baseResponse;
+  return result;
 }
 
-function createResponse(data, status, extraHeaders) {
+function jsonResponse(data, status) {
   status = status || 200;
-  extraHeaders = extraHeaders || {};
-
-  var headers = {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Cache-Control': 'public, max-age=0, s-maxage=60',
-    'Vary': 'Accept-Encoding'
-  };
-
-  for (var key in extraHeaders) {
-    headers[key] = extraHeaders[key];
-  }
-
   return new Response(JSON.stringify(data), {
     status: status,
-    headers: headers
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Cache-Control': 'public, max-age=0, s-maxage=60',
+      'Vary': 'Accept-Encoding'
+    }
+  });
+}
+
+function textResponse(text, contentType) {
+  return new Response(text, {
+    status: 200,
+    headers: {
+      'Content-Type': contentType + '; charset=utf-8',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'public, max-age=0, s-maxage=60',
+      'Vary': 'Accept-Encoding'
+    }
   });
 }
 
 async function handleRequest(request) {
   try {
     var url = new URL(request.url);
-
     var pathname = url.pathname;
 
     if (pathname === '/api/categories') {
-      return createResponse({
+      return jsonResponse({
         code: 200,
         data: ALL_CATEGORIES.map(function(key) {
           return { key: key, name: CATEGORY_MAP[key].name, desc: CATEGORY_MAP[key].desc };
@@ -176,10 +112,10 @@ async function handleRequest(request) {
     var sentences = [];
 
     if (category && CATEGORY_MAP[category]) {
-      sentences = await fetchCategoryData(category);
+      sentences = getSentences(category);
     } else {
       var selectedCategory = ALL_CATEGORIES[Math.floor(Math.random() * ALL_CATEGORIES.length)];
-      sentences = await fetchCategoryData(selectedCategory);
+      sentences = getSentences(selectedCategory);
     }
 
     if (minLength > 0) {
@@ -190,50 +126,24 @@ async function handleRequest(request) {
     }
 
     var sentence = getRandomSentence(sentences);
-
     var responseData = buildResponse(sentence, format);
 
     if (callback && format === 'json') {
-      var jsResponse = callback + '(' + JSON.stringify(responseData) + ');';
-      return new Response(jsResponse, {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/javascript; charset=utf-8',
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'public, max-age=0, s-maxage=60',
-          'Vary': 'Accept-Encoding'
-        }
-      });
+      return textResponse(callback + '(' + JSON.stringify(responseData) + ');', 'application/javascript');
     }
 
     if (format === 'text') {
-      return new Response(responseData.text, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'public, max-age=0, s-maxage=60',
-          'Vary': 'Accept-Encoding'
-        }
-      });
+      return textResponse(responseData.text, 'text/plain');
     }
 
     if (format === 'js') {
-      return new Response(responseData.js, {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/javascript; charset=utf-8',
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'public, max-age=0, s-maxage=60',
-          'Vary': 'Accept-Encoding'
-        }
-      });
+      return textResponse(responseData.js, 'application/javascript');
     }
 
-    return createResponse(responseData);
+    return jsonResponse(responseData);
   } catch (error) {
-    console.error('Error in handleRequest:', error);
-    return createResponse({
+    console.error('Error:', error);
+    return jsonResponse({
       code: 500,
       message: 'Internal server error: ' + error.message
     }, 500);
